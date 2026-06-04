@@ -1,110 +1,237 @@
 <Project>
-  <!-- Default RID -->
+
+  <!-- ================================================================= -->
+  <!-- CycloneDDS.NET MSBuild integration — SINGLE SOURCE OF TRUTH.      -->
+  <!--                                                                   -->
+  <!-- This file is shipped in the NuGet package (packed as              -->
+  <!-- buildTransitive/CycloneDDS.NET.targets) AND used for in-repo      -->
+  <!-- builds via a thin shim at tools/CycloneDDS.CodeGen/CycloneDDS     -->
+  <!-- .targets that sets a few properties and <Import>s this file.      -->
+  <!--                                                                   -->
+  <!-- Do NOT fork this logic again. Environment differences belong in   -->
+  <!-- the overridable properties below, not in a second copy.           -->
+  <!-- ================================================================= -->
+
+  <!-- 0. Configurable knobs. Defaults target the NuGet-consumer case;   -->
+  <!--    the in-repo shim overrides what it needs BEFORE importing.     -->
   <PropertyGroup>
-    <CycloneDdsRid Condition="'$(RuntimeIdentifier)'==''">win-x64</CycloneDdsRid>
-    <CycloneDdsRid Condition="'$(RuntimeIdentifier)'!=''">$(RuntimeIdentifier)</CycloneDdsRid>
-  </PropertyGroup>
-  
-  <!-- Locate native tools & libraries -->
-  <PropertyGroup>
-    <!-- 
-      The package layout is:
-      buildTransitive/CycloneDDS.targets (THIS FILE)
-      runtimes/win-x64/native/ (Native Assets)
-      tools/CycloneDDS.CodeGen.dll (Managed CodeGen Tool)
-      
-      $(MSBuildThisFileDirectory) is buildTransitive/
-    -->
-    <CycloneDdsPackageRoot>$(MSBuildThisFileDirectory)../</CycloneDdsPackageRoot>
-    <CycloneDdsToolsPath>$(CycloneDdsPackageRoot)runtimes/$(CycloneDdsRid)/native/</CycloneDdsToolsPath>
-    <CycloneDdsCodeGenPath>$(CycloneDdsPackageRoot)tools/CycloneDDS.CodeGen.dll</CycloneDdsCodeGenPath>
+    <!-- Where generated .cs/.idl land. Framework-aware by default so a
+         multi-targeting project doesn't share one folder across TFMs.
+         The in-repo shim overrides this to the legacy flat obj\Generated
+         so cross-project IDL discovery (below) keeps working. -->
+    <CycloneDdsGeneratedDir Condition="'$(CycloneDdsGeneratedDir)' == ''">$(IntermediateOutputPath)CycloneDdsGenerated</CycloneDdsGeneratedDir>
+
+    <!-- The incremental stamp MUST live INSIDE the generated dir so its
+         lifetime is tied to the generated content: 'Clean' (and any wipe
+         of the folder) removes the stamp with it, forcing a full regen.
+
+         The historical bug was a MISSING SEPARATOR here
+         ('$(CycloneDdsGeneratedDir)codegen.stamp'), which placed the stamp
+         as a SIBLING of the folder ('...\CycloneDdsGeneratedcodegen.stamp').
+         When the folder was cleaned but that orphaned stamp survived, the
+         next build saw an up-to-date stamp, SKIPPED codegen, and then
+         compiled with NO generated files — silently producing an assembly
+         missing its [assembly: DdsIdlMapping(...)] metadata. Downstream
+         projects then couldn't emit '#include' for that type and idlc
+         failed with "Scoped name ... cannot be resolved". -->
+    <CycloneDdsStampFile>$(CycloneDdsGeneratedDir)\codegen.stamp</CycloneDdsStampFile>
+
+    <!-- The code-generator assembly. Default = packaged location
+         (buildTransitive/ -> ../tools/). The in-repo shim points this at
+         the freshly built tool under tools\CycloneDDS.CodeGen\bin\... -->
+    <CycloneDdsCodeGenPath Condition="'$(CycloneDdsCodeGenPath)' == ''">$(MSBuildThisFileDirectory)..\tools\CycloneDDS.CodeGen.dll</CycloneDdsCodeGenPath>
+
+    <!-- When 'true', build the generator from source (CycloneDdsCodeGenProject)
+         before running it. The in-repo shim sets this; consumers never do
+         (the tool is prebuilt inside the package). -->
+    <CycloneDdsBuildToolFromSource Condition="'$(CycloneDdsBuildToolFromSource)' == ''">false</CycloneDdsBuildToolFromSource>
+    <CycloneDdsCodeGenProject Condition="'$(CycloneDdsCodeGenProject)' == ''">$(MSBuildThisFileDirectory)..\..\tools\CycloneDDS.CodeGen\CycloneDDS.CodeGen.csproj</CycloneDdsCodeGenProject>
+
+    <!-- Opt-in switch. The code generator (a full Roslyn compilation per project) is
+         EXPENSIVE, so it must run only where DDS types are actually authored — NOT on
+         every project in the transitive reference closure.
+
+         'CycloneDdsCodeGenEnabled' is set to 'true' by build/CycloneDDS.NET.props, which
+         NuGet imports ONLY for a DIRECT PackageReference to CycloneDDS.NET (build/ assets,
+         unlike buildTransitive/, do not flow to transitive consumers). So a project that
+         merely consumes DDS-bearing assemblies inherits these targets but leaves the flag
+         unset and skips codegen entirely — it still receives the generated .idl at runtime
+         via the defining project's CopyToOutputDirectory content.
+
+         A project that authors DDS types but references the package only transitively can
+         opt in by setting <CycloneDdsCodeGenEnabled>true</CycloneDdsCodeGenEnabled> itself.
+         The in-repo shim sets it for the bindings' own projects. -->
+    <CycloneDdsCodeGenActive>false</CycloneDdsCodeGenActive>
+    <CycloneDdsCodeGenActive Condition="'$(CycloneDdsCodeGenEnabled)' == 'true' AND '$(CycloneDdsDisableCodeGen)' != 'true'">true</CycloneDdsCodeGenActive>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <CycloneDdsGeneratedDir Condition="'$(CycloneDdsGeneratedDir)' == ''">$(IntermediateOutputPath)CycloneDdsGenerated/</CycloneDdsGeneratedDir>
-    <CycloneDdsStampFile>$(CycloneDdsGeneratedDir)codegen.stamp</CycloneDdsStampFile>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <CycloneDdsSourceFiles Include="**\*.cs" Exclude="$(CycloneDdsGeneratedDir)**\*.cs;$(IntermediateOutputPath)**\*;$(BaseIntermediateOutputPath)**\*;bin\**" />
+  <!-- Conditioned so the **\*.cs glob is not even evaluated for projects that don't run codegen. -->
+  <ItemGroup Condition="'$(CycloneDdsCodeGenActive)' == 'true'">
+    <CycloneDdsSourceFiles Include="**\*.cs" Exclude="$(CycloneDdsGeneratedDir)\**\*.cs;obj\**;bin\**" />
   </ItemGroup>
-  
-  <!-- Code Generator Target -->
-  <Target Name="CycloneDdsGenerate" BeforeTargets="CoreCompile" Condition="'$(CycloneDdsDisableCodeGen)' != 'true'"
+
+  <!-- Second-level gate: even among projects that opt in (direct package reference), only
+       run the generator when the project actually declares something it would emit. The
+       generator's discovery rule is "type is [DdsTopic]/[DdsStruct]/[DdsUnion] OR is an enum"
+       (enums always get IDL + a DdsIdlMapping, which is how enum-only contract assemblies
+       like GizmoMap.Contracts feed downstream topics). So we skip only when a project has
+       NEITHER — a fast in-process source scan, no extra dotnet launch. This mirrors the
+       generator exactly, so it can never under-generate. -->
+  <UsingTask TaskName="CycloneDdsDetectSchema"
+             TaskFactory="RoslynCodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Sources ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+      <HasSchema ParameterType="System.Boolean" Output="true" />
+    </ParameterGroup>
+    <Task>
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        HasSchema = false;
+        var rxDds = new System.Text.RegularExpressions.Regex(
+            @"^\s*\[\s*Dds(Topic|Struct|Union)\b",
+            System.Text.RegularExpressions.RegexOptions.Multiline);
+        var rxEnum = new System.Text.RegularExpressions.Regex(
+            @"^\s*((public|internal|private|protected|file|static|sealed|partial|new)\s+)*enum\s+\w",
+            System.Text.RegularExpressions.RegexOptions.Multiline);
+        if (Sources != null)
+        {
+            foreach (var item in Sources)
+            {
+                try
+                {
+                    var path = item.ItemSpec;
+                    if (!System.IO.File.Exists(path)) continue;
+                    var text = System.IO.File.ReadAllText(path);
+                    if (rxDds.IsMatch(text) || rxEnum.IsMatch(text)) { HasSchema = true; break; }
+                }
+                catch { }
+            }
+        }
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <!-- 1. Copy IDL files from referenced assemblies / project references.
+          Union of both discovery strategies: the assembly-output scan
+          covers NuGet/assembly references; the obj\Generated scan covers
+          not-yet-packed sibling projects in the same repo (no-op for
+          consumers, whose references have no obj\Generated). -->
+  <Target Name="CopyReferencedIdlFiles" DependsOnTargets="ResolveReferences"
+          Condition="'$(CycloneDdsCodeGenActive)' == 'true'">
+    <ItemGroup>
+      <ReferenceDirs Include="@(ReferencePath->'%(RootDir)%(Directory)')" />
+      <ReferenceDirs Include="@(ReferenceCopyLocalPaths->'%(RootDir)%(Directory)')" />
+      <PotentialIdlFiles Include="%(ReferenceDirs.Identity)*.idl" />
+
+      <ProjectReferenceIdlDirs Include="@(ProjectReference->'%(RootDir)%(Directory)obj\Generated')"
+                               Condition="Exists('%(ProjectReference.RootDir)%(ProjectReference.Directory)obj\Generated')" />
+    </ItemGroup>
+
+    <CreateItem Include="@(ProjectReferenceIdlDirs->'%(Identity)\*.idl')">
+      <Output TaskParameter="Include" ItemName="ProjectReferenceIdlFiles" />
+    </CreateItem>
+
+    <Message Text="Copying referenced IDL files from: @(ReferenceDirs)" Importance="normal" />
+    <Message Text="Found IDL files: @(PotentialIdlFiles);@(ProjectReferenceIdlFiles)" Importance="normal" />
+
+    <Copy SourceFiles="@(PotentialIdlFiles);@(ProjectReferenceIdlFiles)"
+          DestinationFolder="$(CycloneDdsGeneratedDir)"
+          SkipUnchangedFiles="true"
+          Condition="'@(PotentialIdlFiles)@(ProjectReferenceIdlFiles)' != ''" />
+  </Target>
+
+  <!-- 2. (in-repo only) Build the generator from source before running it. -->
+  <Target Name="BuildCycloneDDSCodeGen"
+          Condition="'$(CycloneDdsBuildToolFromSource)' == 'true' AND '$(CycloneDdsCodeGenActive)' == 'true'">
+    <MSBuild Projects="$(CycloneDdsCodeGenProject)"
+             Targets="Build"
+             Properties="Configuration=$(Configuration)" />
+  </Target>
+
+  <!-- 3. The main generation target. The generated .idl are copied to OutputPath in this
+          target's body (see below) so a referencing project can find them; that copy is
+          order-independent, unlike the old AfterTargets approach which raced AssignTargetPaths. -->
+  <Target Name="CycloneDdsGenerate"
+          BeforeTargets="CoreCompile"
+          Condition="'$(CycloneDdsCodeGenActive)' == 'true'"
+          DependsOnTargets="BuildCycloneDDSCodeGen;CopyReferencedIdlFiles"
           Inputs="@(CycloneDdsSourceFiles);@(ReferencePath);$(CycloneDdsCodeGenPath)"
           Outputs="$(CycloneDdsStampFile)">
+
+    <!-- Detection runs INSIDE the body (not as a Condition on a dependency): a false target
+         Condition skips its DependsOnTargets too, so a property set by a dependency can't gate
+         the same target. Scan the sources for [Dds*]/enum; if absent, skip the expensive run. -->
+    <CycloneDdsDetectSchema Sources="@(CycloneDdsSourceFiles)">
+      <Output TaskParameter="HasSchema" PropertyName="CycloneDdsHasSchema" />
+    </CycloneDdsDetectSchema>
+
     <PropertyGroup>
-      <!-- Optimized for Design-Time Builds: Skip execution, just include existing files -->
-      <RunCycloneDdsCodeGen Condition="'$(DesignTimeBuild)' != 'true' AND '$(BuildingProject)' == 'true'">true</RunCycloneDdsCodeGen>
+      <SourcePath>$(MSBuildProjectDirectory)</SourcePath>
+      <FlatReferences>@(ReferencePath)</FlatReferences>
+      <!-- Run only for a real build that actually declares DDS types/enums. -->
+      <RunCycloneDdsCodeGen Condition="'$(DesignTimeBuild)' != 'true' AND '$(BuildingProject)' == 'true' AND '$(CycloneDdsHasSchema)' == 'true'">true</RunCycloneDdsCodeGen>
     </PropertyGroup>
 
-    <Message Text="Running CycloneDDS Code Generator..." Importance="high" Condition="'$(RunCycloneDdsCodeGen)' == 'true'" />
-    
-    <MakeDir Directories="$(CycloneDdsGeneratedDir)" />
-    
-    <!-- 
-      Invoke the CodeGen tool only during real builds.
-      Arg 1: Source Directory (Project Dir)
-      Arg 2: Output Directory (obj/...)
-      Arg 3: Referenced Assemblies (semicolon separated list)
-    -->
-    <Exec Command="dotnet &quot;$(CycloneDdsCodeGenPath)&quot; &quot;$(MSBuildProjectDirectory)&quot; &quot;$(CycloneDdsGeneratedDir)&quot; &quot;@(ReferencePath)&quot;" 
+    <Message Condition="'$(CycloneDdsHasSchema)' != 'true'" Importance="normal"
+             Text="CycloneDDS: $(MSBuildProjectName) declares no DDS types or enums — skipping code generation." />
+
+    <MakeDir Directories="$(CycloneDdsGeneratedDir)" Condition="'$(RunCycloneDdsCodeGen)' == 'true' AND !Exists('$(CycloneDdsGeneratedDir)')" />
+
+    <Message Text="Running CycloneDDS Code Generator ($(MSBuildProjectName))" Importance="high" Condition="'$(RunCycloneDdsCodeGen)' == 'true'" />
+
+    <Exec Command="dotnet &quot;$(CycloneDdsCodeGenPath)&quot; &quot;$(SourcePath)&quot; &quot;$(CycloneDdsGeneratedDir.TrimEnd('\'))&quot; &quot;$(FlatReferences)&quot;"
           Condition="'$(RunCycloneDdsCodeGen)' == 'true'" />
 
     <Touch Files="$(CycloneDdsStampFile)" AlwaysCreate="true" Condition="'$(RunCycloneDdsCodeGen)' == 'true'" />
+
+    <!-- Copy the just-generated .idl into this project's output IN THE SAME TARGET RUN.
+         A separate AfterTargets step (IncludeIdlFilesInOutput) raced AssignTargetPaths and on a
+         clean build copied nothing, so the .idl never reached bin and a referencing project's
+         CopyReferencedIdlFiles (which scans @(ReferencePath) = referenced bin dirs) couldn't
+         find them — idlc then failed with "Can't open include file". Doing it here is
+         order-independent and deterministic. -->
+    <ItemGroup Condition="'$(RunCycloneDdsCodeGen)' == 'true'">
+      <_CycloneDdsGeneratedIdl Include="$(CycloneDdsGeneratedDir)\*.idl" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_CycloneDdsGeneratedIdl)"
+          DestinationFolder="$(OutputPath)"
+          SkipUnchangedFiles="true"
+          Condition="'@(_CycloneDdsGeneratedIdl)' != ''" />
   </Target>
 
-  <Target Name="IncludeCycloneDdsGeneratedFiles" BeforeTargets="CoreCompile" DependsOnTargets="CycloneDdsGenerate"
-          Condition="'$(CycloneDdsDisableCodeGen)' != 'true'">
+  <!-- 4. Inject generated C# files into compilation. -->
+  <Target Name="IncludeCycloneDdsGeneratedFiles"
+          BeforeTargets="CoreCompile"
+          DependsOnTargets="CycloneDdsGenerate"
+          Condition="'$(CycloneDdsCodeGenActive)' == 'true'">
     <ItemGroup>
-      <Compile Include="$(CycloneDdsGeneratedDir)**/*.cs" Exclude="@(Compile)" />
+      <Compile Include="$(CycloneDdsGeneratedDir)\**\*.cs" Exclude="@(Compile)" />
     </ItemGroup>
   </Target>
-  
-  <Target Name="IncludeIdlFilesInOutput" BeforeTargets="GetCopyToOutputDirectoryItems;AssignTargetPaths" AfterTargets="CycloneDdsGenerate">
+
+  <!-- 5. Package generated IDL files so consuming projects can reference them. -->
+  <Target Name="IncludeIdlFilesInOutput"
+          BeforeTargets="GetCopyToOutputDirectoryItems;AssignTargetPaths"
+          AfterTargets="CycloneDdsGenerate"
+          Condition="'$(CycloneDdsCodeGenActive)' == 'true'">
     <ItemGroup>
-      <GeneratedIdlFiles Include="$(CycloneDdsGeneratedDir)*.idl" />
+      <GeneratedIdlFiles Include="$(CycloneDdsGeneratedDir)\*.idl" />
     </ItemGroup>
+
+    <ItemGroup>
+      <Content Include="@(GeneratedIdlFiles)">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        <Visible>false</Visible>
+        <Link>%(RecursiveDir)%(Filename)%(Extension)</Link>
+      </Content>
+    </ItemGroup>
+
     <Copy SourceFiles="@(GeneratedIdlFiles)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
   </Target>
-  
-  <!-- Copy Native Assets to Output Directory -->
-  <Target Name="CycloneDdsCopyNative" AfterTargets="Build">
-    <ItemGroup>
-      <NativeFiles Include="$(CycloneDdsToolsPath)*.dll" />
-      <NativeFiles Include="$(CycloneDdsToolsPath)*.exe" />
-    </ItemGroup>
-    
-    <Message Text="Copying CycloneDDS native assets from $(CycloneDdsToolsPath) to $(OutputPath)" Importance="normal" />
-    
-    <Copy SourceFiles="@(NativeFiles)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="true" />
-  </Target>
 
-  <!-- Clean generated files -->
-  <Target Name="CycloneDdsClean" AfterTargets="Clean">
-    <PropertyGroup>
-      <CycloneDdsGeneratedDir Condition="'$(CycloneDdsGeneratedDir)' == ''">$(IntermediateOutputPath)CycloneDdsGenerated/</CycloneDdsGeneratedDir>
-    </PropertyGroup>
+  <!-- 6. Clean target — removes the generated dir AND the stamp inside it. -->
+  <Target Name="CycloneDDSClean" AfterTargets="Clean">
     <RemoveDir Directories="$(CycloneDdsGeneratedDir)" />
-  </Target>
-
-  <Target Name="CopyReferencedIdlFiles" DependsOnTargets="ResolveReferences">
-     <ItemGroup>
-         <ReferenceDirs Include="@(ReferencePath->'%(RootDir)%(Directory)')" />
-         <ReferenceDirs Include="@(ReferenceCopyLocalPaths->'%(RootDir)%(Directory)')" />
-         <PotentialIdlFiles Include="%(ReferenceDirs.Identity)*.idl" />
-         <ProjectReferenceIdlDirs Include="@(ProjectReference->'%(RootDir)%(Directory)obj\Generated')" Condition="Exists('%(ProjectReference.RootDir)%(ProjectReference.Directory)obj\Generated')" />
-     </ItemGroup>
-
-     <CreateItem Include="@(ProjectReferenceIdlDirs->'%(Identity)\*.idl')">
-       <Output TaskParameter="Include" ItemName="ProjectReferenceIdlFiles" />
-     </CreateItem>
-     
-     <Message Text="Copying referenced IDL files from: @(ReferenceDirs)" Importance="normal" />
-     <Message Text="Found IDL files: @(PotentialIdlFiles);@(ProjectReferenceIdlFiles)" Importance="normal" />
-     
-     <!-- Copy them to the generation folder so the generator (and idlc) can find them -->
-     <Copy SourceFiles="@(PotentialIdlFiles);@(ProjectReferenceIdlFiles)" DestinationFolder="$(CycloneDdsGeneratedDir)" SkipUnchangedFiles="true" />
   </Target>
 
 </Project>
