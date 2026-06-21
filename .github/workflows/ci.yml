@@ -35,11 +35,11 @@ jobs:
 
     - name: Build Managed Code
       shell: pwsh
-      run: dotnet build CycloneDDS.NET.sln -c Release
+      run: dotnet build CycloneDDS.NET.Core.slnf -c Release
 
     - name: Run Tests
       shell: pwsh
-      run: dotnet test CycloneDDS.NET.sln -c Release --no-build --verbosity normal
+      run: dotnet test CycloneDDS.NET.Core.slnf -c Release --no-build --verbosity normal
 
     - name: Upload win-x64 Native Artifacts
       uses: actions/upload-artifact@v4
@@ -99,7 +99,7 @@ jobs:
     - name: Build and Pack
       shell: pwsh
       run: |
-        dotnet build CycloneDDS.NET.sln -c Release
+        dotnet build CycloneDDS.NET.Core.slnf -c Release
         dotnet pack src/CycloneDDS.Runtime/CycloneDDS.Runtime.csproj -c Release --no-build -o artifacts/nuget
 
     - name: Upload NuGet Packages
