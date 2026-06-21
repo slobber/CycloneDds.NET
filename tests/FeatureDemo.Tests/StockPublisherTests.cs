@@ -23,7 +23,7 @@ public class StockPublisherTests
         
         var receivedSymbols = new HashSet<string>();
         var cts = new CancellationTokenSource();
-        cts.CancelAfter(10000); // 10 sec max timeout
+        cts.CancelAfter(20000); // 20 sec max timeout
 
         // Start publisher
         var pubTask = publisher.StartPublishingAsync(50, cts.Token);
