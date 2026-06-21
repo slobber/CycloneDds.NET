@@ -128,8 +128,11 @@ module Test {
                 var assemblyDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
                 // Traverse up 5 levels: net8.0 -> Debug -> bin -> CycloneDDS.CodeGen.Tests -> tests -> RepoRoot
                 var repoRoot = Path.GetFullPath(Path.Combine(assemblyDir, "..", "..", "..", "..", ".."));
-                var idlcPath = Path.Combine(repoRoot, "artifacts", "native", "win-x64", "idlc.exe");
-                
+
+                string rid = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "win-x64" : "linux-x64";
+                string idlcName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "idlc.exe" : "idlc";
+                var idlcPath = Path.Combine(repoRoot, "artifacts", "native", rid, idlcName);
+
                 runner.IdlcPathOverride = idlcPath;
                 var result = runner.RunIdlc(tempIdl, Path.GetTempPath());
                 Assert.NotEqual(0, result.ExitCode);

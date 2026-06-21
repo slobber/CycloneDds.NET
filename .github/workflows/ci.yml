@@ -9,17 +9,14 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  # ── Windows: full build, test, and managed code compilation ──────────
+  windows-build:
     runs-on: windows-latest
-    
-    env:
-      # This ensures the build script can find CMake if not in default path (though it usually is on runners)
-      CMAKE_GENERATOR: "Visual Studio 17 2022"
 
     steps:
     - uses: actions/checkout@v3
       with:
-        fetch-depth: 0 # Required for Nerdbank.GitVersioning to determine version
+        fetch-depth: 0
         submodules: recursive
 
     - name: Setup .NET
@@ -32,9 +29,78 @@ jobs:
         dotnet --version
         cmake --version
 
-    - name: Build, Test, and Pack
+    - name: Build Native (win-x64)
       shell: pwsh
-      run: .\build\pack.ps1
+      run: .\build\native-win.ps1
+
+    - name: Build Managed Code
+      shell: pwsh
+      run: dotnet build CycloneDDS.NET.sln -c Release
+
+    - name: Run Tests
+      shell: pwsh
+      run: dotnet test CycloneDDS.NET.sln -c Release --no-build --verbosity normal
+
+    - name: Upload win-x64 Native Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: native-win-x64
+        path: artifacts/native/win-x64/*
+
+  # ── Linux: native compilation only ───────────────────────────────────
+  linux-build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+
+    - name: Build Native (linux-x64)
+      shell: bash
+      run: |
+        chmod +x build/native-linux.sh
+        build/native-linux.sh Release
+
+    - name: Upload linux-x64 Native Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: native-linux-x64
+        path: artifacts/native/linux-x64/*
+
+  # ── Pack: combine native artifacts and create NuGet package ──────────
+  pack:
+    runs-on: windows-latest
+    needs: [windows-build, linux-build]
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        submodules: recursive
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Download win-x64 Native Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: native-win-x64
+        path: artifacts/native/win-x64/
+
+    - name: Download linux-x64 Native Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: native-linux-x64
+        path: artifacts/native/linux-x64/
+
+    - name: Build and Pack
+      shell: pwsh
+      run: |
+        dotnet build CycloneDDS.NET.sln -c Release
+        dotnet pack src/CycloneDDS.Runtime/CycloneDDS.Runtime.csproj -c Release --no-build -o artifacts/nuget
 
     - name: Upload NuGet Packages
       uses: actions/upload-artifact@v4

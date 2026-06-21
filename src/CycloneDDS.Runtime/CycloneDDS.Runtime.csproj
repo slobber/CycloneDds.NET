@@ -7,26 +7,36 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <NoWarn>CS8600;CS8601;CS8603;CS8604</NoWarn>
     <PackageId>CycloneDDS.NET</PackageId>
-    <Description>Cyclone DDS Runtime bindings for .NET (Win64)</Description>
+    <Description>Cyclone DDS Runtime bindings for .NET (Windows x64, Linux x64)</Description>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- Runtime: Native Assets -->
     <None Include="..\..\artifacts\native\win-x64\ddsc.dll" Pack="true" PackagePath="runtimes/win-x64/native" />
-    
+    <None Include="..\..\artifacts\native\linux-x64\libddsc.so" Pack="true" PackagePath="runtimes/linux-x64/native" />
+
     <!-- Build: Targets (buildTransitive → imported by direct AND transitive consumers) -->
     <None Include="..\..\build\targets\CycloneDDS.targets" Pack="true" PackagePath="buildTransitive/CycloneDDS.NET.targets" />
     <!-- Build: direct-reference marker (build/ → imported ONLY by direct consumers).
          Enables the code generator only for projects that directly reference the package. -->
     <None Include="..\..\build\props\CycloneDDS.props" Pack="true" PackagePath="build/CycloneDDS.NET.props" />
 
-    <!-- Tools: Native Assets (Explicitly selected) -->
+    <!-- Tools: Native Assets — Windows -->
     <None Include="..\..\artifacts\native\win-x64\idlc.exe" Pack="true" PackagePath="tools/" />
     <None Include="..\..\artifacts\native\win-x64\cycloneddsidl.dll" Pack="true" PackagePath="tools/" />
     <None Include="..\..\artifacts\native\win-x64\cycloneddsidlc.dll" Pack="true" PackagePath="tools/" />
     <None Include="..\..\artifacts\native\win-x64\cycloneddsidljson.dll" Pack="true" PackagePath="tools/" />
     <None Include="..\..\artifacts\native\win-x64\ddsc.dll" Pack="true" PackagePath="tools/" />
+
+    <!-- Tools: Native Assets — Linux -->
+    <None Include="..\..\artifacts\native\linux-x64\idlc" Pack="true" PackagePath="tools/" />
+    <None Include="..\..\artifacts\native\linux-x64\*.so" Pack="true" PackagePath="tools/" />
+    <None Include="..\..\artifacts\native\linux-x64\*.so.0" Pack="true" PackagePath="tools/" />
+
+    <!-- Runtime: Linux Native Assets -->
+    <None Include="..\..\artifacts\native\linux-x64\*.so" Pack="true" PackagePath="runtimes/linux-x64/native" />
+    <None Include="..\..\artifacts\native\linux-x64\*.so.0" Pack="true" PackagePath="runtimes/linux-x64/native" />
 
     <!-- Tools: Shared Managed Libraries -->
     <None Include="..\..\tools\CycloneDDS.CodeGen\bin\$(Configuration)\net8.0\CycloneDDS.Compiler.Common.dll" Pack="true" PackagePath="tools/" />
