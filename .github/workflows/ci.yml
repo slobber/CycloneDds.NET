@@ -100,6 +100,7 @@ jobs:
     - name: Build and Pack
       shell: pwsh
       run: |
+        dotnet build CycloneDDS.NET.Core.slnf -c Release
         dotnet pack src/CycloneDDS.Runtime/CycloneDDS.Runtime.csproj -c Release --no-build -o artifacts/nuget
 
     - name: Upload NuGet Packages
