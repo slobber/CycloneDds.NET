@@ -41,11 +41,24 @@ namespace CycloneDDS.CodeGen
                 CSharpSyntaxTree.ParseText(File.ReadAllText(f), path: f)).ToList();
             
             // 3. Create compilation
+            // Determine whether MSBuild already provides framework reference assemblies
+            // (e.g., C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\...).
+            // When those are provided, we MUST NOT additionally load runtime assemblies
+            // (typeof(object).Assembly.Location or TRUSTED_PLATFORM_ASSEMBLIES)
+            // because mixing runtime System.Private.CoreLib with ref System.Runtime.dll
+            // causes Roslyn to fail to resolve enum member constants.
+            bool hasFrameworkRefs = referencePaths?.Any(p =>
+                p.IndexOf("Microsoft.NETCore.App.Ref", StringComparison.OrdinalIgnoreCase) >= 0) ?? false;
+
             var references = new List<MetadataReference>
             {
-                MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(CycloneDDS.Schema.DdsTopicAttribute).Assembly.Location)
             };
+
+            if (!hasFrameworkRefs)
+            {
+                references.Add(MetadataReference.CreateFromFile(typeof(object).Assembly.Location));
+            }
 
             if (referencePaths != null)
             {
@@ -58,15 +71,15 @@ namespace CycloneDDS.CodeGen
                 }
             }
             
-            // Add System.Runtime for net8.0 if needed, but object might be enough for basic types
-            // If running on .NET Core, we might need more refs.
-            // For now, let's trust the environment or add basic refs.
-            var trustedAssemblies = AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") as string;
-            if (trustedAssemblies != null)
+            if (!hasFrameworkRefs)
             {
-                foreach (var path in trustedAssemblies.Split(Path.PathSeparator))
+                var trustedAssemblies = AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") as string;
+                if (trustedAssemblies != null)
                 {
-                    references.Add(MetadataReference.CreateFromFile(path));
+                    foreach (var path in trustedAssemblies.Split(Path.PathSeparator))
+                    {
+                        references.Add(MetadataReference.CreateFromFile(path));
+                    }
                 }
             }
 
