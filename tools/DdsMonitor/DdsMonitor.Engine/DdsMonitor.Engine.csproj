@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <PackageReference Include="Fasterflect.Netstandard" Version="1.0.9" />
+    <PackageReference Include="Microsoft.AspNetCore.Components" Version="10.0.9" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.9" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.9" />

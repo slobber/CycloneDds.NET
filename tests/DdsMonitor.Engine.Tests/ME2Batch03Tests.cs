@@ -155,7 +155,7 @@ public sealed class ME2Batch03Tests
         var meta = new TopicMetadata(typeof(KeyedType));
         var nameField = meta.AllFields.Single(f => f.StructuredName == "Name");
 
-        var payload = new KeyedType { Id = 1, Name = null };
+        var payload = new KeyedType { Id = 1, Name = "" };
         var result = nameField.Getter(payload);
 
         Assert.Null(result);

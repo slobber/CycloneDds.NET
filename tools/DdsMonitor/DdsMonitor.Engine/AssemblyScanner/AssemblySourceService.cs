@@ -241,7 +241,7 @@ public sealed class AssemblySourceService : IAssemblySourceService
         }
     }
 
-    private static string[] ReadPathsFromWorkspace(string workspaceFilePath)
+    private static string[]? ReadPathsFromWorkspace(string workspaceFilePath)
     {
         try
         {
@@ -255,7 +255,7 @@ public sealed class AssemblySourceService : IAssemblySourceService
         catch { return null; }
     }
 
-    private string[] ReadPathsFromLegacy(string workspaceFilePath)
+    private string[]? ReadPathsFromLegacy(string workspaceFilePath)
     {
         try
         {
@@ -266,7 +266,7 @@ public sealed class AssemblySourceService : IAssemblySourceService
         catch { return null; }
     }
 
-    private static string[] ReadPathsFromPlainFile(string filePath)
+    private static string[]? ReadPathsFromPlainFile(string filePath)
     {
         try
         {

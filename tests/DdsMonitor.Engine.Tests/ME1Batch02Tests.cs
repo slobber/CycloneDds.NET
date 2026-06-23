@@ -373,11 +373,11 @@ public sealed class ME1Batch02Tests
             instanceStore: instanceStore,
             ordinalCounter: ordinal);
 
-        Assert.Equal(1, sampleStore.AllSamples.Count);
+        Assert.Single(sampleStore.AllSamples);
 
         bridge.ResetAll();
 
-        Assert.Equal(0, sampleStore.AllSamples.Count);
+        Assert.Empty(sampleStore.AllSamples);
     }
 
     [Fact]

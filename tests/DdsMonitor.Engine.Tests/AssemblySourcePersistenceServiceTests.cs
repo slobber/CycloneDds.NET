@@ -82,7 +82,7 @@ public sealed class AssemblySourcePersistenceServiceTests : IDisposable
 
         // After reload, the entry was added (even if the DLL doesn't exist, it will appear
         // with a load error, but the entry is still created).
-        Assert.Equal(1, assemblySource.Entries.Count);
+        Assert.Single(assemblySource.Entries);
 
         service.Dispose();
     }

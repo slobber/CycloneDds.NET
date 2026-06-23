@@ -162,7 +162,7 @@ public sealed class ME2Batch01Tests
 
         bridge.ResetAll();
 
-        Assert.Equal(0, store.AllSamples.Count);
+        Assert.Empty(store.AllSamples);
     }
 
     [Fact]
@@ -190,7 +190,7 @@ public sealed class ME2Batch01Tests
 public sealed class ME2Batch01BlazorTests
 {
     private static Assembly? _blazorAssembly;
-    private static Assembly? _schemaAssembly;
+    private static readonly Assembly? _schemaAssembly;
 
     private static Assembly LoadDdsMonitorAssembly()
     {

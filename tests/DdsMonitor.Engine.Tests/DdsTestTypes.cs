@@ -292,5 +292,5 @@ public partial struct StructArmUnion
 public partial class FloatListSequenceTopic
 {
     public int Id;
-    public System.Collections.Generic.List<float> Items;
+    public List<float> Items = [];
 }

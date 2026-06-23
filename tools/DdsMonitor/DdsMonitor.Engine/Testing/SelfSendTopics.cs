@@ -51,7 +51,7 @@ public partial class SelfTestPose
 
     public Pose Pose;
 
-    public System.Collections.Generic.List<float> Samples;
+    public List<float> Samples = [];
     public StatusLevel Level;
 
     public TestingUnion UnionValue;

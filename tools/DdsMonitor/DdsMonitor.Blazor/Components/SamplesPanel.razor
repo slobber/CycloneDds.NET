@@ -626,7 +626,7 @@
             FilterText = _filterText,
             ColumnKeys = _selectedColumns.Select(c => c.StructuredName).ToList(),
             ColumnWeights = new Dictionary<string, double>(_columnWeights),
-            SortFieldKey = _sortField?.StructuredName,
+            SortFieldKey = _sortField?.StructuredName ?? "",
             SortDirection = _sortDirection
         };
 

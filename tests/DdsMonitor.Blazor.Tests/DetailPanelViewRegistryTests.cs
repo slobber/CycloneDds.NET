@@ -25,7 +25,7 @@ public sealed class DetailPanelViewRegistryTests : TestContext
     private static SampleData MakeSample(Type topicType) =>
         new()
         {
-            Payload = Activator.CreateInstance(topicType),
+            Payload = Activator.CreateInstance(topicType)!,
             TopicMetadata = new TopicMetadata(topicType),
             Ordinal = 1
         };

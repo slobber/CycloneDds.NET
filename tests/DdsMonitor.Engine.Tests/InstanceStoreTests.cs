@@ -106,7 +106,7 @@ public sealed class InstanceStoreTests
         store.Clear();
 
         var topic = store.GetTopicInstances(metadata.TopicType);
-        Assert.Equal(0, topic.InstancesByKey.Count);
+        Assert.Empty(topic.InstancesByKey);
         Assert.Equal(0, topic.LiveCount);
     }
 

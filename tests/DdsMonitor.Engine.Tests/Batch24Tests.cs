@@ -235,9 +235,9 @@ public sealed class Batch24Tests
 
             Assert.Single(imported);
             Assert.NotNull(imported[0].Sender);
-            Assert.Equal(1234u, imported[0].Sender!.ProcessId);
-            Assert.Equal("PC01", imported[0].Sender.MachineName);
-            Assert.Equal("10.0.0.1", imported[0].Sender.IpAddress);
+            Assert.Equal(1234u, imported[0].Sender?.ProcessId);
+            Assert.Equal("PC01", imported[0].Sender?.MachineName);
+            Assert.Equal("10.0.0.1", imported[0].Sender?.IpAddress);
         }
         finally
         {

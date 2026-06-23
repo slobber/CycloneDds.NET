@@ -131,8 +131,7 @@ public sealed class ME1Batch04Tests
     {
         const string json = "{\"Id\":3,\"Status\":\"Ok\"}";
         var payload = JsonSerializer.Deserialize<MockEnumTopic>(json, DdsJsonOptions.Import);
-        Assert.NotNull(payload);
-        Assert.Equal(3, payload!.Id);
+        Assert.Equal(3, payload.Id);
         Assert.Equal(MockTopicStatus.Ok, payload.Status);
     }
 
@@ -142,7 +141,6 @@ public sealed class ME1Batch04Tests
         var original = new MockEnumTopic { Id = 5, Status = MockTopicStatus.Error };
         var json = JsonSerializer.Serialize(original, DdsJsonOptions.Export);
         var restored = JsonSerializer.Deserialize<MockEnumTopic>(json, DdsJsonOptions.Import);
-        Assert.NotNull(restored);
         Assert.Equal(original.Status, restored!.Status);
     }
 
