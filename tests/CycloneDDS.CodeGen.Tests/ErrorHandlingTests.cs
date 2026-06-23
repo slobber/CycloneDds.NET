@@ -126,7 +126,7 @@ module Test {
                 var runner = new IdlcRunner();
                 // Determine path relative to test assembly to ensure portability
                 var assemblyDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-                // Traverse up 5 levels: net8.0 -> Debug -> bin -> CycloneDDS.CodeGen.Tests -> tests -> RepoRoot
+                // Traverse up 5 levels: net10.0 -> Debug -> bin -> CycloneDDS.CodeGen.Tests -> tests -> RepoRoot
                 var repoRoot = Path.GetFullPath(Path.Combine(assemblyDir, "..", "..", "..", "..", ".."));
 
                 string rid = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "win-x64" : "linux-x64";

@@ -24,8 +24,8 @@
     <!-- Build and run the generator straight from this repo's source. -->
     <CycloneDdsBuildToolFromSource>true</CycloneDdsBuildToolFromSource>
     <CycloneDdsCodeGenProject>$(MSBuildThisFileDirectory)CycloneDDS.CodeGen.csproj</CycloneDdsCodeGenProject>
-    <CycloneDdsCodeGenPath Condition="'$(Configuration)' == 'Release'">$(MSBuildThisFileDirectory)bin\Release\net8.0\CycloneDDS.CodeGen.dll</CycloneDdsCodeGenPath>
-    <CycloneDdsCodeGenPath Condition="'$(Configuration)' != 'Release'">$(MSBuildThisFileDirectory)bin\Debug\net8.0\CycloneDDS.CodeGen.dll</CycloneDdsCodeGenPath>
+    <CycloneDdsCodeGenPath Condition="'$(Configuration)' == 'Release'">$(MSBuildThisFileDirectory)bin\Release\net10.0\CycloneDDS.CodeGen.dll</CycloneDdsCodeGenPath>
+    <CycloneDdsCodeGenPath Condition="'$(Configuration)' != 'Release'">$(MSBuildThisFileDirectory)bin\Debug\net10.0\CycloneDDS.CodeGen.dll</CycloneDdsCodeGenPath>
   </PropertyGroup>
 
   <Import Project="$(MSBuildThisFileDirectory)..\..\build\targets\CycloneDDS.targets" />

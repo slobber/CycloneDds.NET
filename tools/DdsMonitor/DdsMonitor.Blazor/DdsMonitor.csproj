@@ -16,10 +16,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Components" Version="10.0.9" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\..\..\src\CycloneDDS.Runtime\CycloneDDS.Runtime.csproj" />
     <ProjectReference Include="..\DdsMonitor.Engine\DdsMonitor.Engine.csproj" />
     <!-- Build-only: ensures plugin projects build (and stage to project-level plugins\) before the host runs -->
@@ -34,7 +30,7 @@
   -->
   <Target Name="CopyEcsPluginToOutput" AfterTargets="Build">
     <PropertyGroup>
-      <EcsPluginDll>$(MSBuildThisFileDirectory)..\DdsMonitor.Plugins.ECS\bin\$(Configuration)\net8.0\DdsMonitor.Plugins.ECS.dll</EcsPluginDll>
+      <EcsPluginDll>$(MSBuildThisFileDirectory)..\DdsMonitor.Plugins.ECS\bin\$(Configuration)\net10.0\DdsMonitor.Plugins.ECS.dll</EcsPluginDll>
       <OutputPluginsDir>$(OutputPath)plugins\</OutputPluginsDir>
     </PropertyGroup>
     <MakeDir Directories="$(OutputPluginsDir)" />
@@ -44,7 +40,7 @@
 
   <Target Name="CopyFeatureDemoPluginToOutput" AfterTargets="Build">
     <PropertyGroup>
-      <FeatureDemoPluginDll>$(MSBuildThisFileDirectory)..\DdsMonitor.Plugins.FeatureDemo\bin\$(Configuration)\net8.0\DdsMonitor.Plugins.FeatureDemo.dll</FeatureDemoPluginDll>
+      <FeatureDemoPluginDll>$(MSBuildThisFileDirectory)..\DdsMonitor.Plugins.FeatureDemo\bin\$(Configuration)\net10.0\DdsMonitor.Plugins.FeatureDemo.dll</FeatureDemoPluginDll>
       <OutputPluginsDir>$(OutputPath)plugins\</OutputPluginsDir>
     </PropertyGroup>
     <MakeDir Directories="$(OutputPluginsDir)" />

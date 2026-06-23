@@ -15,7 +15,7 @@ Write-Host "Building Importer and CodeGen..." -ForegroundColor Cyan
 dotnet build $ImporterProj -c Release
 dotnet build $CodeGenProj -c Release
 
-$IdlImporterExe = Join-Path $RootDir "tools\CycloneDDS.IdlImporter\bin\Release\net8.0\CycloneDDS.IdlImporter.exe"
+$IdlImporterExe = Join-Path $RootDir "tools\CycloneDDS.IdlImporter\bin\Release\net10.0\CycloneDDS.IdlImporter.exe"
 
 if (-not (Test-Path $IdlImporterExe)) {
     Write-Error "Importer executable not found at $IdlImporterExe"

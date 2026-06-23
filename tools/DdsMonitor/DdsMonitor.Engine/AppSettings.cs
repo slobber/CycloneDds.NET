@@ -58,7 +58,7 @@ public sealed class AppSettings
     /// When non-empty, overrides the persisted <c>assembly-sources.json</c> list for this
     /// launch without modifying the saved file.  Use this to run the monitor against a
     /// specific build output without changing the per-user configuration.
-    /// Supports CLI usage <c>--AppSettings:TopicSources:0=C:\MyApp\bin\Debug\net8.0</c>.
+    /// Supports CLI usage <c>--AppSettings:TopicSources:0=C:\MyApp\bin\Debug\net10.0</c>.
     /// </summary>
     public string[] TopicSources { get; set; } = Array.Empty<string>();
 }

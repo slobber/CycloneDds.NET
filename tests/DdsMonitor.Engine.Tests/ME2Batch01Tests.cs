@@ -202,7 +202,7 @@ public sealed class ME2Batch01BlazorTests
             foreach (var config in new[] { "Debug", "Release" })
             {
                 var path = Path.Combine(directory.FullName, "tools", "DdsMonitor",
-                    "DdsMonitor.Blazor", "bin", config, "net8.0", "DdsMonitor.dll");
+                    "DdsMonitor.Blazor", "bin", config, "net10.0", "DdsMonitor.dll");
                 if (File.Exists(path))
                 {
                     _blazorAssembly = Assembly.LoadFrom(path);

@@ -242,14 +242,14 @@ To scan a different set of assembly directories for a single launch **without ov
 
 ```
 # Scan a single directory
-DdsMonitor.exe --AppSettings:TopicSources:0="C:\MyApp\bin\Debug\net8.0"
+DdsMonitor.exe --AppSettings:TopicSources:0="C:\MyApp\bin\Debug\net10.0"
 
 # Scan two directories
-DdsMonitor.exe --AppSettings:TopicSources:0="C:\MyApp\bin\Debug\net8.0" ^
-               --AppSettings:TopicSources:1="C:\SharedTopics\bin\Release\net8.0"
+DdsMonitor.exe --AppSettings:TopicSources:0="C:\MyApp\bin\Debug\net10.0" ^
+               --AppSettings:TopicSources:1="C:\SharedTopics\bin\Release\net10.0"
 
 # Point at a specific DLL instead of a whole directory
-DdsMonitor.exe --AppSettings:TopicSources:0="C:\MyApp\bin\Debug\net8.0\MyTopics.dll"
+DdsMonitor.exe --AppSettings:TopicSources:0="C:\MyApp\bin\Debug\net10.0\MyTopics.dll"
 ```
 
 When `--AppSettings:TopicSources` is non-empty:
@@ -301,8 +301,8 @@ Lists directories that DDS Monitor scans for DLL assemblies containing DDS topic
 **File structure:** a JSON array of directory paths (scanning finds every `.dll` in the directory):
 ```json
 [
-  "C:\\MyApp\\bin\\Debug\\net8.0",
-  "C:\\SharedTopics\\bin\\Release\\net8.0"
+  "C:\\MyApp\\bin\\Debug\\net10.0",
+  "C:\\SharedTopics\\bin\\Release\\net10.0"
 ]
 ```
 
