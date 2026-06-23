@@ -12,11 +12,8 @@ jobs:
   # ── Windows: full build, test, and managed code compilation ──────────
   windows-build:
     runs-on: windows-latest
-    
     env:
-      # This ensures the build script can find CMake if not in default path (though it usually is on runners)
       CMAKE_GENERATOR: "Visual Studio 18 2026"
-
     steps:
     - uses: actions/checkout@v3
       with:
@@ -86,7 +83,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: 8.0.x
+        dotnet-version: 10.0.x
 
     - name: Download win-x64 Native Artifacts
       uses: actions/download-artifact@v4
@@ -103,7 +100,6 @@ jobs:
     - name: Build and Pack
       shell: pwsh
       run: |
-        dotnet build CycloneDDS.NET.Core.slnf -c Release
         dotnet pack src/CycloneDDS.Runtime/CycloneDDS.Runtime.csproj -c Release --no-build -o artifacts/nuget
 
     - name: Upload NuGet Packages
