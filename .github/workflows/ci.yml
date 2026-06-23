@@ -12,6 +12,10 @@ jobs:
   # ── Windows: full build, test, and managed code compilation ──────────
   windows-build:
     runs-on: windows-latest
+    
+    env:
+      # This ensures the build script can find CMake if not in default path (though it usually is on runners)
+      CMAKE_GENERATOR: "Visual Studio 18 2026"
 
     steps:
     - uses: actions/checkout@v3
@@ -22,7 +26,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: 8.0.x
+        dotnet-version: 10.0.x
 
     - name: Display Tools Versions
       run: |

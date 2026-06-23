@@ -13,29 +13,35 @@ public class Program
 {
     public static async Task<int> Main(string[] args)
     {
-        var masterIdlArg = new Argument<string>(
-            name: "master-idl",
-            description: "Path to the entry-point IDL file");
+        var masterIdlArg = new Argument<string>("master-idl")
+        {
+            Description = "Path to the entry-point IDL file"
+        };
 
-        var sourceRootOption = new Option<string?>(
-            name: "--source-root",
-            description: "Root directory containing all IDL files (default: master-idl directory)");
+        var sourceRootOption = new Option<string?>("--source-root")
+        {
+            Description = "Root directory containing all IDL files (default: master-idl directory)"
+        };
 
-        var outputRootOption = new Option<string?>(
-            name: "--output-root",
-            description: "Root directory for generated C# files (default: current directory)");
+        var outputRootOption = new Option<string?>("--output-root")
+        {
+            Description = "Root directory for generated C# files (default: current directory)"
+        };
 
-        var idlcPathOption = new Option<string?>(
-            name: "--idlc-path",
-            description: "Path to idlc executable (default: auto-detect)");
+        var idlcPathOption = new Option<string?>("--idlc-path")
+        {
+            Description = "Path to idlc executable (default: auto-detect)"
+        };
 
-        var idlcArgsOption = new Option<string?>(
-            name: "--idlc-args",
-            description: "Extra arguments to pass to idlc");
+        var idlcArgsOption = new Option<string?>("--idlc-args")
+        {
+            Description = "Extra arguments to pass to idlc"
+        };
 
-        var verboseOption = new Option<bool>(
-            name: "--verbose",
-            description: "Enable detailed logging");
+        var verboseOption = new Option<bool>("--verbose")
+        {
+            Description = "Enable detailed logging"
+        };
 
         var rootCommand = new RootCommand("CycloneDDS IDL Importer v1.0")
         {
@@ -47,9 +53,20 @@ public class Program
             verboseOption
         };
 
-        rootCommand.SetHandler(
-            async (masterIdl, sourceRoot, outputRoot, idlcPath, idlcArgs, verbose) =>
+        rootCommand.SetAction(
+            async (parseResult) =>
             {
+                var masterIdl = parseResult.GetValue(masterIdlArg);
+                if (string.IsNullOrEmpty(masterIdl))
+                {
+                    Console.Error.WriteLine("master-idl is required!");
+                    return;
+                }
+                var sourceRoot = parseResult.GetValue(sourceRootOption);
+                var outputRoot = parseResult.GetValue(outputRootOption);
+                var idlcPath = parseResult.GetValue(idlcArgsOption);
+                var idlcArgs = parseResult.GetValue(idlcArgsOption);
+                var verbose = parseResult.GetValue(verboseOption);
                 // Default logic
                 if (string.IsNullOrEmpty(sourceRoot))
                 {
@@ -70,18 +87,18 @@ public class Program
                     Console.ForegroundColor = ConsoleColor.Red;
                     Console.Error.WriteLine($"Error: {ex.Message}");
                     Console.ResetColor();
-                    
+
                     if (verbose)
                     {
                         Console.Error.WriteLine(ex.StackTrace);
                     }
-                    
+
                     Environment.Exit(1);
                 }
-            },
-            masterIdlArg, sourceRootOption, outputRootOption, idlcPathOption, idlcArgsOption, verboseOption);
+            });
 
-        return await rootCommand.InvokeAsync(args);
+        rootCommand.Parse(args);
+        return 0;
     }
 
     private static async Task RunImporter(
@@ -131,17 +148,17 @@ public class Program
         Directory.CreateDirectory(fullOutputRoot);
 
         // Run the Importer
-        try 
+        try
         {
             var importer = new Importer(verbose, idlcPath, idlcArgs);
             importer.Import(fullMasterPath, fullSourceRoot, fullOutputRoot);
         }
         catch (Exception)
         {
-             // Log error but allow Main to catch it for consistent exit codes
-             throw;
+            // Log error but allow Main to catch it for consistent exit codes
+            throw;
         }
-        
+
         Console.WriteLine();
         Console.ForegroundColor = ConsoleColor.Green;
         Console.WriteLine("✓ Import complete");

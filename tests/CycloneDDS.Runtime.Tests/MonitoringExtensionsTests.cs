@@ -374,25 +374,28 @@ namespace CycloneDDS.Runtime.Tests
         }
 
         [Fact(Timeout = 5000)]
-        public void DdsWaitSet_Wait_ReceivesDataFromWriter()
+        public async Task DdsWaitSet_Wait_ReceivesDataFromWriter()
         {
-            using var participant = new DdsParticipant(0);
-            using var ws = new DdsWaitSet(participant);
-            using var reader = new DdsReader<TestMessage>(participant, "MONEXT009_Integration");
-            using var writer = new DdsWriter<TestMessage>(participant, "MONEXT009_Integration");
+            await Task.Run(() =>
+            {
+                using var participant = new DdsParticipant(0);
+                using var ws = new DdsWaitSet(participant);
+                using var reader = new DdsReader<TestMessage>(participant, "MONEXT009_Integration");
+                using var writer = new DdsWriter<TestMessage>(participant, "MONEXT009_Integration");
 
-            ws.Attach(reader);
+                ws.Attach(reader);
 
-            // Give time for discovery
-            Thread.Sleep(200);
+                // Give time for discovery
+                Thread.Sleep(200);
 
-            writer.Write(new TestMessage { Id = 42, Value = 100 });
+                writer.Write(new TestMessage { Id = 42, Value = 100 });
 
-            var buffer = new IDdsReader[4];
-            int count = ws.Wait(buffer.AsSpan(), TimeSpan.FromSeconds(2));
+                var buffer = new IDdsReader[4];
+                int count = ws.Wait(buffer.AsSpan(), TimeSpan.FromSeconds(2));
 
-            Assert.True(count > 0, "Expected at least one triggered reader");
-            Assert.Same(reader, buffer[0]);
+                Assert.True(count > 0, "Expected at least one triggered reader");
+                Assert.Same(reader, buffer[0]);
+            });
         }
 
         [Fact]
