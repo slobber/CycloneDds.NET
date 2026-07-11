@@ -65,18 +65,6 @@
       <NativeDir>$(MSBuildProjectDirectory)\..\..\..\cyclonedds</NativeDir>
       <UpstreamRepoUrl>https://github.com/eclipse-cyclonedds/cyclonedds</UpstreamRepoUrl>
     </PropertyGroup>
-    
-    <Exec Command="git rev-parse HEAD" ConsoleToMSBuild="true" WorkingDirectory="$(NativeDir)" StandardOutputImportance="Low">
-      <Output TaskParameter="ConsoleOutput" PropertyName="NativeFullCommit" />
-    </Exec>
-    
-    <Exec Command="git merge-base origin/master HEAD" ConsoleToMSBuild="true" WorkingDirectory="$(NativeDir)" StandardOutputImportance="Low">
-      <Output TaskParameter="ConsoleOutput" PropertyName="NativeBaseCommit" />
-    </Exec>
-
-    <Exec Command="git config --get remote.origin.url" ConsoleToMSBuild="true" WorkingDirectory="$(NativeDir)" StandardOutputImportance="Low">
-      <Output TaskParameter="ConsoleOutput" PropertyName="NativeRepoUrl" />
-    </Exec>
 
     <PropertyGroup>
       <NativeVersionInfo>
