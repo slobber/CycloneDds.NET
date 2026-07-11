@@ -108,6 +108,8 @@ namespace CycloneDDS.Runtime
                          DdsApi.dds_qset_resource_limits(actualQos, -1, -1, -1);
                     }
                     DdsApi.dds_qset_history(actualQos, (int)qosAttr.HistoryKind, depth);
+                    if (qosAttr.Batching)
+                        DdsApi.dds_qset_writer_batching(actualQos, true);
                 }
                 else
                 {
@@ -170,6 +172,14 @@ namespace CycloneDDS.Runtime
             {
                  throw new InvalidOperationException("Native delegates missing.");
             }
+        }
+
+        public void Flush()
+        {
+            if (_writerHandle == null) throw new ObjectDisposedException(nameof(DdsWriter<T>));
+            DdsApi.DdsReturnCode result = (DdsApi.DdsReturnCode)DdsApi.dds_write_flush(_writerHandle.NativeHandle);
+            if (result != DdsApi.DdsReturnCode.Ok)
+                throw new DdsException(result, $"dds_write_flush failed: {result}");
         }
 
         /// <summary>

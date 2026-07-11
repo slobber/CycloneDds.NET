@@ -148,6 +148,10 @@ namespace CycloneDDS.Runtime.Interop
             IntPtr data);
 
         [DllImport(DLL_NAME)]
+        public static extern int dds_write_flush(
+            DdsEntity writer);
+
+        [DllImport(DLL_NAME)]
         public static extern int dds_dispose(
             DdsEntity writer,
             IntPtr data);
@@ -368,6 +372,10 @@ namespace CycloneDDS.Runtime.Interop
         
         public const int DDS_RELIABILITY_BEST_EFFORT = 0;
         public const int DDS_RELIABILITY_RELIABLE = 1;
+
+        // Writer Batching QoS
+        [DllImport(DLL_NAME)]
+        public static extern void dds_qset_writer_batching(IntPtr qos, [MarshalAs(UnmanagedType.I1)] bool batch_updates);
 
         // Partition QoS
         [DllImport(DLL_NAME, CallingConvention = CallingConvention.Cdecl)]

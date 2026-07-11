@@ -27,4 +27,12 @@ public sealed class DdsQosAttribute : Attribute
     /// Gets or sets the history depth. Only used when HistoryKind is KeepLast.
     /// </summary>
     public int HistoryDepth { get; set; } = 1;
+
+    /// <summary>
+    /// Gets or sets whether writer batching is enabled.
+    /// When enabled, multiple writes are aggregated into larger RTPS messages
+    /// for network efficiency. Call Flush() on the writer to force pending
+    /// batches to be sent over the network.
+    /// </summary>
+    public bool Batching { get; set; }
 }
