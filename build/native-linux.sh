@@ -79,9 +79,9 @@ echo ""
 echo "[3/3] Copying artifacts to $ARTIFACTS_DIR..."
 
 # Runtime library (include both .so.0 for soname and .so for convention)
-cp -f "$INSTALL_DIR/lib/libddsc.so.0.11.0" "$ARTIFACTS_DIR/libddsc.so.0" 2>/dev/null || echo "  [-] Missing libddsc.so.0.11.0"
-cp -f "$INSTALL_DIR/lib/libddsc.so.0.11.0" "$ARTIFACTS_DIR/libddsc.so" 2>/dev/null || true
-echo "  [+] libddsc.so / libddsc.so.0"
+cp -f "$INSTALL_DIR/lib/libddsc.so.11.0.1" "$ARTIFACTS_DIR/libddsc.so.11" 2>/dev/null || echo "  [-] Missing libddsc.so.11.0.1"
+cp -f "$INSTALL_DIR/lib/libddsc.so.11.0.1" "$ARTIFACTS_DIR/libddsc.so" 2>/dev/null || true
+echo "  [+] libddsc.so / libddsc.so.11"
 
 # IDL compiler executable
 cp -f "$INSTALL_DIR/bin/idlc" "$ARTIFACTS_DIR/" 2>/dev/null || echo "  [-] Missing idlc"
@@ -89,9 +89,9 @@ echo "  [+] idlc"
 
 # IDL compiler support libraries
 for lib in libcycloneddsidl libcycloneddsidlc libcycloneddsidljson; do
-    cp -f "$INSTALL_DIR/lib/${lib}.so.0.11.0" "$ARTIFACTS_DIR/${lib}.so.0" 2>/dev/null || echo "  [-] Missing ${lib}.so.0.11.0"
-    cp -f "$INSTALL_DIR/lib/${lib}.so.0.11.0" "$ARTIFACTS_DIR/${lib}.so" 2>/dev/null || true
-    echo "  [+] ${lib}.so / ${lib}.so.0"
+    cp -f "$INSTALL_DIR/lib/${lib}.so.11.0.1" "$ARTIFACTS_DIR/${lib}.so.11" 2>/dev/null || echo "  [-] Missing ${lib}.so.11.0.1"
+    cp -f "$INSTALL_DIR/lib/${lib}.so.11.0.1" "$ARTIFACTS_DIR/${lib}.so" 2>/dev/null || true
+    echo "  [+] ${lib}.so / ${lib}.so.11"
 done
 
 # Fix RPATH: cmake sets RPATH to $ORIGIN/../lib (bin/ -> lib/), but in the
