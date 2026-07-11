@@ -1,4 +1,4 @@
 [submodule "cyclonedds"]
 	path = cyclonedds
-	url = https://github.com/pjanec/cyclonedds.git
+	url = https://github.com/slobber/cyclonedds.git
 	branch = pj/v11-idlcjson
