@@ -55,6 +55,7 @@ echo "[1/3] Configuring CMake..."
 cmake -S "$SOURCE_DIR" -B "$BUILD_DIR" \
     -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
     -DBUILD_IDLC=ON \
+    -DBUILD_DDSPERF=OFF \
     -DBUILD_TESTING=OFF \
     -DBUILD_EXAMPLES=OFF \
     -DENABLE_SSL=OFF \

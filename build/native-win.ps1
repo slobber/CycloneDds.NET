@@ -60,6 +60,7 @@ try {
         "-A", "x64",
         "-DCMAKE_INSTALL_PREFIX=$InstallDir",
         "-DBUILD_IDLC=ON",
+        "-DBUILD_DDSPERF=OFF",
         "-DBUILD_TESTING=OFF",
         "-DBUILD_EXAMPLES=OFF",
         "-DENABLE_SSL=OFF",
