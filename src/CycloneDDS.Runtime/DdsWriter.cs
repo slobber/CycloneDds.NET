@@ -49,6 +49,12 @@ namespace CycloneDDS.Runtime
 
         private static readonly DdsExtensibilityKind _extensibilityKind;
 
+        private readonly bool _batchEnable;
+        private readonly int _batchMaxBytes;
+        private readonly int _batchMaxSamples;
+        private int _batchSampleCount;
+        private int _batchByteCount;
+
         static DdsWriter()
         {
             var attr = typeof(T).GetCustomAttribute<DdsExtensibilityAttribute>();
@@ -108,8 +114,13 @@ namespace CycloneDDS.Runtime
                          DdsApi.dds_qset_resource_limits(actualQos, -1, -1, -1);
                     }
                     DdsApi.dds_qset_history(actualQos, (int)qosAttr.HistoryKind, depth);
-                    if (qosAttr.Batching)
+                    if (qosAttr.BatchEnable)
+                    {
                         DdsApi.dds_qset_writer_batching(actualQos, true);
+                        _batchEnable = true;
+                        _batchMaxBytes = qosAttr.BatchMaxBytes;
+                        _batchMaxSamples = qosAttr.BatchMaxSamples;
+                    }
                 }
                 else
                 {
@@ -166,12 +177,24 @@ namespace CycloneDDS.Runtime
         {
             if (_nativeSizer != null && _nativeMarshaller != null)
             {
-                PerformNativeOperation(sample, DdsApi.dds_write, false);
+                int size = PerformNativeOperation(sample, DdsApi.dds_write, false);
+                if (_batchEnable) TrackBatch(size);
             }
             else
             {
                  throw new InvalidOperationException("Native delegates missing.");
             }
+        }
+
+        private void TrackBatch(int sampleSize)
+        {
+            _batchSampleCount++;
+            _batchByteCount += sampleSize;
+
+            bool hitSamples = _batchMaxSamples > 0 && _batchSampleCount >= _batchMaxSamples;
+            bool hitBytes = _batchMaxBytes > 0 && _batchByteCount >= _batchMaxBytes;
+            if (hitSamples || hitBytes)
+                Flush();
         }
 
         public void Flush()
@@ -180,6 +203,8 @@ namespace CycloneDDS.Runtime
             DdsApi.DdsReturnCode result = (DdsApi.DdsReturnCode)DdsApi.dds_write_flush(_writerHandle.NativeHandle);
             if (result != DdsApi.DdsReturnCode.Ok)
                 throw new DdsException(result, $"dds_write_flush failed: {result}");
+            _batchSampleCount = 0;
+            _batchByteCount = 0;
         }
 
         /// <summary>
@@ -228,7 +253,7 @@ namespace CycloneDDS.Runtime
             }
         }
 
-        private void PerformNativeOperation(in T sample, Func<DdsApi.DdsEntity, IntPtr, int> operation, bool isKey)
+        private int PerformNativeOperation(in T sample, Func<DdsApi.DdsEntity, IntPtr, int> operation, bool isKey)
         {
              if (_writerHandle == null) throw new ObjectDisposedException(nameof(DdsWriter<T>));
              
@@ -237,7 +262,7 @@ namespace CycloneDDS.Runtime
              var headSize = isKey ? _keyNativeHeadSize : _nativeHeadSize;
              
              // Safety check - should be guaranteed by caller
-             if (sizer == null || marshaller == null) return; 
+             if (sizer == null || marshaller == null) return 0; 
 
              int totalSize = sizer(sample);
              byte[] buffer = Arena.Rent(totalSize);
@@ -257,16 +282,17 @@ namespace CycloneDDS.Runtime
                          
                          marshaller(sample, ptr, ref arena);
                          
-                         int ret = operation(_writerHandle.NativeHandle, ptr);
-                         if (ret < 0) throw new DdsException((DdsApi.DdsReturnCode)ret, $"Native operation failed: {ret}");
-                     }
-                 }
-             }
-             finally
-             {
-                 Arena.Return(buffer);
-             }
-        }
+                          int ret = operation(_writerHandle.NativeHandle, ptr);
+                          if (ret < 0) throw new DdsException((DdsApi.DdsReturnCode)ret, $"Native operation failed: {ret}");
+                      }
+                  }
+              }
+              finally
+              {
+                  Arena.Return(buffer);
+              }
+              return totalSize;
+         }
 
         
         public event EventHandler<DdsApi.DdsPublicationMatchedStatus>? PublicationMatched

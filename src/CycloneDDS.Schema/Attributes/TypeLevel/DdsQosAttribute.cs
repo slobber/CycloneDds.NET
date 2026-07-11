@@ -31,8 +31,24 @@ public sealed class DdsQosAttribute : Attribute
     /// <summary>
     /// Gets or sets whether writer batching is enabled.
     /// When enabled, multiple writes are aggregated into larger RTPS messages
-    /// for network efficiency. Call Flush() on the writer to force pending
-    /// batches to be sent over the network.
+    /// for network efficiency. Samples are buffered until BatchMaxBytes or
+    /// BatchMaxSamples is reached, or Flush() is called explicitly.
     /// </summary>
-    public bool Batching { get; set; }
+    public bool BatchEnable { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum total serialized data bytes per batch.
+    /// When the accumulated size exceeds this value, the batch is flushed
+    /// automatically. 0 means unlimited (batch grows until BatchMaxSamples
+    /// or explicit Flush()).
+    /// </summary>
+    public int BatchMaxBytes { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum number of samples per batch.
+    /// When the sample count reaches this value, the batch is flushed
+    /// automatically. 0 means unlimited (batch grows until BatchMaxBytes
+    /// or explicit Flush()).
+    /// </summary>
+    public int BatchMaxSamples { get; set; }
 }
