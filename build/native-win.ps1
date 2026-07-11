@@ -63,7 +63,8 @@ try {
         "-DBUILD_TESTING=OFF",
         "-DBUILD_EXAMPLES=OFF",
         "-DENABLE_SSL=OFF",
-        "-DENABLE_SHM=OFF",
+        "-DENABLE_ICEORYX=OFF",
+        "-DENABLE_TCP=OFF",
         "-DENABLE_SECURITY=OFF"
     )
 
