@@ -79,6 +79,7 @@ jobs:
       with:
         fetch-depth: 0 # Required for Nerdbank.GitVersioning to determine version
         submodules: recursive
+        token: ${{ secrets.CI_PAT }}
 
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
