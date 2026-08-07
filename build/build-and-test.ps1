@@ -4,8 +4,13 @@
 # PURPOSE:
 #   The primary developer entry point.
 #   1. Checks for native artifacts (builds them if missing).
-#   2. Builds the entire Managed Solution (CycloneDDS.NET.sln).
-#   3. Runs all tests in the solution.
+#   2. Builds the core Managed Solution (CycloneDDS.NET.Core.slnf).
+#   3. Runs all tests in the core solution filter.
+#
+#   The full CycloneDDS.NET.sln also contains example projects (e.g. HelloWorld)
+#   that consume CycloneDDS.NET as a NuGet *package* from artifacts/nuget, which
+#   only exists after `dotnet pack` (see build/pack.ps1). Those examples are
+#   therefore excluded here; build them via .\build\pack.ps1 after packing.
 #
 # USAGE:
 #   .\build\build-and-test.ps1 [-Configuration Release|Debug] [-Clean]
@@ -21,6 +26,11 @@ param(
 $ErrorActionPreference = "Stop"
 
 $RepoRoot = $PSScriptRoot | Split-Path -Parent
+
+# Solution filter that excludes examples/ projects. Examples reference
+# CycloneDDS.NET as a NuGet package, which doesn't exist until after the Pack
+# step, so they must be restored/built separately (see build/pack.ps1).
+$CoreSlnf = "$RepoRoot\CycloneDDS.NET.Core.slnf"
 
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host "  CycloneDDS.NET: Build & Test ($Configuration)" -ForegroundColor Cyan
@@ -44,7 +54,7 @@ if (-not (Test-Path $NativeArtifacts)) {
 
 if ($Clean) {
     Write-Host "`nCleaning..." -ForegroundColor Yellow
-    dotnet clean "$RepoRoot\CycloneDDS.NET.sln" -c $Configuration -v m
+    dotnet clean "$CoreSlnf" -c $Configuration -v m
 }
 
 # 1. Build CodeGen (Critical Dependency)
@@ -54,13 +64,13 @@ if ($Clean) {
 
 # 2. Build Entire Solution
 Write-Host "`n[1/3] Building Solution (Managed)..." -ForegroundColor Yellow
-dotnet build "$RepoRoot\CycloneDDS.NET.sln" -c $Configuration
+dotnet build "$CoreSlnf" -c $Configuration
 if ($LASTEXITCODE -ne 0) { throw "Solution build failed." }
 
 # 3. Run All Tests
 Write-Host "`n[2/3] Executing Test Suite (All Projects)..." -ForegroundColor Yellow
 
-$TestArgs = @("test", "$RepoRoot\CycloneDDS.NET.sln", "-c", $Configuration, "--no-build", "--logger", "console;verbosity=normal")
+$TestArgs = @("test", "$CoreSlnf", "-c", $Configuration, "--no-build", "--logger", "console;verbosity=normal")
 
 if (![string]::IsNullOrWhiteSpace($Filter)) {
     $TestArgs += "--filter"
