@@ -100,11 +100,11 @@ jobs:
         path: artifacts/native/linux-x64/
 
     - name: Build, Test, and Pack
-      shell: poweshell
+      shell: powershell
       run: .\build\pack.ps1
 
     - name: Smoke-test the packed package (Windows)
-      shell: poweshell
+      shell: powershell
       run: .\build\test-package.ps1
 
     - name: Upload win-x64 Native Artifacts
