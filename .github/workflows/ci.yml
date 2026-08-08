@@ -108,7 +108,7 @@ jobs:
       run: .\build\test-package.ps1
 
     - name: Upload win-x64 Native Artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v3
       if: always()
       with:
         name: native-win-x64
@@ -116,7 +116,7 @@ jobs:
         if-no-files-found: warn
 
     - name: Upload NuGet Packages
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v3
       if: always()
       with:
         name: nuget-packages
@@ -124,7 +124,7 @@ jobs:
         if-no-files-found: warn
 
     - name: Upload Symbol Packages
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v3
       if: always()
       with:
         name: symbol-packages
@@ -154,7 +154,7 @@ jobs:
         dotnet-version: 10.0.x
 
     - name: Download cross-platform packages
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v3
       with:
         name: nuget-packages
         path: artifacts/nuget/
@@ -188,13 +188,13 @@ jobs:
         dotnet-version: 10.0.x
 
     - name: Download packages
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v3
       with:
         name: nuget-packages
         path: artifacts/nuget/
 
     - name: Download symbol packages
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v3
       with:
         name: symbol-packages
         path: artifacts/nuget/
