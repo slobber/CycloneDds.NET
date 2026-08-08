@@ -60,7 +60,11 @@ if (-not $mon) { Write-Host "`nNo DdsMonitor package in feed — skipping tool c
 $monVer = $mon.Name -replace '^CycloneDDS\.NET\.DdsMonitor\.(.+)\.nupkg$', '$1'
 
 Write-Host "`n[2/2] Testing the ddsmonitor global tool $monVer ..."
-dotnet tool uninstall --global CycloneDDS.NET.DdsMonitor 2>$null | Out-Null
+try {
+    dotnet tool uninstall --global CycloneDDS.NET.DdsMonitor 2>$null | Out-Null
+} catch {
+    Write-Host '  DdsMonitor global tool not installed yet - skipping uninstall'
+}
 dotnet tool install --global --add-source $Feed --version $monVer CycloneDDS.NET.DdsMonitor | Out-Null
 
 # Invoke by absolute path: the global-tools dir may not be on PATH in this session
@@ -88,7 +92,11 @@ if ($port) {
 }
 
 if (-not $proc.HasExited) { $proc.Kill(); $proc.WaitForExit() }
-dotnet tool uninstall --global CycloneDDS.NET.DdsMonitor 2>$null | Out-Null
+try {
+    dotnet tool uninstall --global CycloneDDS.NET.DdsMonitor 2>$null | Out-Null
+} catch {
+    Write-Host '  DdsMonitor global tool not installed yet - skipping uninstall'
+}
 
 if ($ok -and $code -eq 200) {
     Write-Host "  [+] ddsmonitor started (port $port) and served HTTP 200 — native loaded OK"
