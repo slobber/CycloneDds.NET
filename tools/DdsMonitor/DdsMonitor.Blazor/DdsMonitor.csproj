@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -42,11 +42,11 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>libddsc.so</Link>
     </Content>
-    <Content Include="$(MSBuildThisFileDirectory)../../../artifacts/native/linux-x64/libddsc.so.11"
+    <Content Include="$(MSBuildThisFileDirectory)../../../artifacts/native/linux-x64/libddsc.so.0"
              Pack="false"
-             Condition="$([MSBuild]::IsOSPlatform('Windows')) AND Exists('$(MSBuildThisFileDirectory)../../../artifacts/native/linux-x64/libddsc.so.11')">
+             Condition="$([MSBuild]::IsOSPlatform('Windows')) AND Exists('$(MSBuildThisFileDirectory)../../../artifacts/native/linux-x64/libddsc.so.0')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>libddsc.so.11</Link>
+      <Link>libddsc.so.0</Link>
     </Content>
     <!-- Packing on Linux → add the win-x64 runtime library. -->
     <Content Include="$(MSBuildThisFileDirectory)../../../artifacts/native/win-x64/ddsc.dll"
@@ -99,6 +99,18 @@
       <NativeDir>$(MSBuildProjectDirectory)\..\..\..\cyclonedds</NativeDir>
       <UpstreamRepoUrl>https://github.com/eclipse-cyclonedds/cyclonedds</UpstreamRepoUrl>
     </PropertyGroup>
+
+    <Exec Command="git rev-parse HEAD" ConsoleToMSBuild="true" WorkingDirectory="$(NativeDir)" StandardOutputImportance="Low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="NativeFullCommit" />
+    </Exec>
+
+    <Exec Command="git merge-base origin/master HEAD" ConsoleToMSBuild="true" WorkingDirectory="$(NativeDir)" StandardOutputImportance="Low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="NativeBaseCommit" />
+    </Exec>
+
+    <Exec Command="git config --get remote.origin.url" ConsoleToMSBuild="true" WorkingDirectory="$(NativeDir)" StandardOutputImportance="Low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="NativeRepoUrl" />
+    </Exec>
 
     <PropertyGroup>
       <NativeVersionInfo>

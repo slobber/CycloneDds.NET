@@ -10,33 +10,13 @@ namespace CycloneDDS.Compiler.Common
         public string? IdlcPathOverride { get; set; }
         public string? IdlcExtraArgs { get; set; }
 
-        private static string IdlcExeName =>
-            RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "idlc.exe" : "idlc";
-
-        private static string IdlcAltName =>
-            RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "idlc" : "idlc.exe";
-
-        private static string[] RuntimeIds => new[] {
-            RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "win-x64" : "linux-x64",
-            RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "linux-x64" : "win-x64"
-        };
-
-        private static bool ExistsOnPath(string fileName, out string foundPath)
-        {
-            foundPath = string.Empty;
-            string? pathEnv = Environment.GetEnvironmentVariable("PATH");
-            if (pathEnv == null) return false;
-            foreach (var dir in pathEnv.Split(Path.PathSeparator))
-            {
-                try
-                {
-                    string path = Path.Combine(dir, fileName);
-                    if (File.Exists(path)) { foundPath = path; return true; }
-                }
-                catch { }
-            }
-            return false;
-        }
+        // The idlc executable and the native RID sub-directory both differ per
+        // platform: idlc.exe under win-x64 on Windows, idlc under linux-x64 on
+        // Linux. Every lookup below iterates these so the same search logic works
+        // on either OS.
+        private static bool IsWindows => RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+        private static string[] IdlcNames => IsWindows ? new[] { "idlc.exe" } : new[] { "idlc" };
+        private static string[] NativeRids => IsWindows ? new[] { "win-x64" } : new[] { "linux-x64" };
 
         public string FindIdlc()
         {
@@ -46,66 +26,91 @@ namespace CycloneDDS.Compiler.Common
                 throw new FileNotFoundException($"idlc not found at override path: {IdlcPathOverride}");
             }
 
+            // Check current directory (where DLLs / .so files are copied)
             string currentDir = AppDomain.CurrentDomain.BaseDirectory;
-
-            // Search strategy: try current-platform name first, then alt-name
-            string[] candidateNames = { IdlcExeName, IdlcAltName };
-
-            foreach (var name in candidateNames)
+            foreach (var name in IdlcNames)
             {
-                // Check current directory
-                string local = Path.Combine(currentDir, name);
-                if (File.Exists(local)) return local;
+                string localIdlc = Path.Combine(currentDir, name);
+                if (File.Exists(localIdlc)) return localIdlc;
+            }
 
-                // Check NuGet package location: tools/ -> ../runtimes/{rid}/native/
-                foreach (var rid in RuntimeIds)
+            // Check NuGet package location relative to tools/ (tools/ -> ../runtimes/{rid}/native/)
+            foreach (var rid in NativeRids)
+            {
+                foreach (var name in IdlcNames)
                 {
                     try
                     {
-                        string nugetPath = Path.Combine(currentDir, "..", "runtimes", rid, "native", name);
-                        if (File.Exists(nugetPath)) return Path.GetFullPath(nugetPath);
+                        string nugetNativePath = Path.Combine(currentDir, "..", "runtimes", rid, "native", name);
+                        if (File.Exists(nugetNativePath)) return Path.GetFullPath(nugetNativePath);
                     }
                     catch { }
                 }
+            }
 
-                // DEV: workspace locations
-                var searchDir = new DirectoryInfo(currentDir);
-                for (int i = 0; i < 6; i++)
+            // DEV: Check workspace location (for tests/dev)
+            // Iterate up 6 levels looking for cyclonedds/install/bin, cyclone-compiled/bin,
+            // or artifacts/native/{rid} — trying each platform's executable name.
+            var searchDir = new DirectoryInfo(currentDir);
+            for (int i = 0; i < 6; i++)
+            {
+                if (searchDir == null) break;
+
+                foreach (var name in IdlcNames)
                 {
-                    if (searchDir == null) break;
-
                     string checkPath = Path.Combine(searchDir.FullName, "cyclonedds", "install", "bin", name);
                     if (File.Exists(checkPath)) return checkPath;
 
                     string repoPath = Path.Combine(searchDir.FullName, "cyclone-compiled", "bin", name);
                     if (File.Exists(repoPath)) return repoPath;
 
-                    foreach (var rid in RuntimeIds)
+                    foreach (var rid in NativeRids)
                     {
-                        repoPath = Path.Combine(searchDir.FullName, "artifacts", "native", rid, name);
-                        if (File.Exists(repoPath)) return repoPath;
+                        string artifactPath = Path.Combine(searchDir.FullName, "artifacts", "native", rid, name);
+                        if (File.Exists(artifactPath)) return artifactPath;
                     }
-
-                    searchDir = searchDir.Parent;
                 }
 
-                // Check environment variable
-                string? cycloneHome = Environment.GetEnvironmentVariable("CYCLONEDDS_HOME");
-                if (!string.IsNullOrEmpty(cycloneHome))
-                {
-                    string path = Path.Combine(cycloneHome, "bin", name);
-                    if (File.Exists(path)) return path;
-                    path = Path.Combine(cycloneHome, name);
-                    if (File.Exists(path)) return path;
-                }
-
-                // Check PATH
-                if (ExistsOnPath(name, out string foundPath))
-                    return foundPath;
+                searchDir = searchDir.Parent;
             }
 
-            throw new FileNotFoundException(
-                $"idlc not found (tried {IdlcExeName} and {IdlcAltName}). Set CYCLONEDDS_HOME or add to PATH.");
+            // Check environment variable
+            string? cycloneHome = Environment.GetEnvironmentVariable("CYCLONEDDS_HOME");
+            if (!string.IsNullOrEmpty(cycloneHome))
+            {
+                foreach (var name in IdlcNames)
+                {
+                    string path = Path.Combine(cycloneHome, "bin", name);
+                    if (File.Exists(path))
+                        return path;
+
+                    // Try without bin?
+                    path = Path.Combine(cycloneHome, name);
+                    if (File.Exists(path))
+                        return path;
+                }
+            }
+
+            // Check PATH
+            string? pathEnv = Environment.GetEnvironmentVariable("PATH");
+            if (pathEnv != null)
+            {
+                foreach (var dir in pathEnv.Split(Path.PathSeparator))
+                {
+                    foreach (var name in IdlcNames)
+                    {
+                        try
+                        {
+                            string path = Path.Combine(dir, name);
+                            if (File.Exists(path))
+                                return path;
+                        }
+                        catch { /* Ignore invalid paths in PATH */ }
+                    }
+                }
+            }
+
+            throw new FileNotFoundException("idlc executable not found. Set CYCLONEDDS_HOME or add to PATH.");
         }
 
         public IdlcResult RunIdlc(string idlFilePath, string outputDir, string? includePath = null)
@@ -127,18 +132,35 @@ namespace CycloneDDS.Compiler.Common
                 CreateNoWindow = true
             };
 
-            // On Linux, set LD_LIBRARY_PATH so idlc can find its .so dependencies
-            // that are packaged alongside it in the tools/ directory.
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            if (!IsWindows)
             {
-                string idlcDir = Path.GetDirectoryName(idlcPath)!;
-                string? existingLdPath = Environment.GetEnvironmentVariable("LD_LIBRARY_PATH");
-                string ldPath = string.IsNullOrEmpty(existingLdPath)
-                    ? idlcDir
-                    : idlcDir + Path.PathSeparator + existingLdPath;
-                startInfo.EnvironmentVariables["LD_LIBRARY_PATH"] = ldPath;
+                // NuGet packages do not preserve the Unix execute bit, so an idlc
+                // restored from the package may not be runnable. Restore it (best effort).
+                // The inner OperatingSystem guard is what the CA1416 analyzer recognizes.
+                try
+                {
+                    if (!OperatingSystem.IsWindows())
+                    {
+                        var mode = File.GetUnixFileMode(idlcPath);
+                        File.SetUnixFileMode(idlcPath,
+                            mode | UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute);
+                    }
+                }
+                catch { /* best effort — may already be executable, or FS may not support it */ }
+
+                // idlc depends on the libcycloneddsidl*.so libraries shipped alongside
+                // it. The native build normally rewrites RPATH to $ORIGIN so they resolve,
+                // but prepend the idlc directory to LD_LIBRARY_PATH as a fallback (e.g.
+                // when patchelf was unavailable at native build time).
+                string? idlcDir = Path.GetDirectoryName(Path.GetFullPath(idlcPath));
+                if (!string.IsNullOrEmpty(idlcDir))
+                {
+                    string existing = Environment.GetEnvironmentVariable("LD_LIBRARY_PATH") ?? string.Empty;
+                    startInfo.Environment["LD_LIBRARY_PATH"] =
+                        existing.Length == 0 ? idlcDir : idlcDir + Path.PathSeparator + existing;
+                }
             }
-            
+
             if (!string.IsNullOrWhiteSpace(IdlcExtraArgs))
             {
                 // Simple split by whitespace is sufficient for most compiler flags like "-Werror"

@@ -12,9 +12,17 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Runtime: Native Assets -->
-    <None Include="..\..\artifacts\native\win-x64\ddsc.dll" Pack="true" PackagePath="runtimes/win-x64/native" />
-    <None Include="..\..\artifacts\native\linux-x64\libddsc.so" Pack="true" PackagePath="runtimes/linux-x64/native" />
+    <!-- Runtime: Native Assets — Windows -->
+    <None Include="..\..\artifacts\native\win-x64\ddsc.dll" Pack="true" PackagePath="runtimes/win-x64/native" Condition="Exists('..\..\artifacts\native\win-x64\ddsc.dll')" />
+
+    <!-- Runtime: Native Assets — Linux. DllImport("ddsc") resolves to libddsc.so
+         from runtimes/linux-x64/native at load time on Linux. Exists-guarded so a
+         Windows-only local pack (no linux artifacts) doesn't fail; the CI pack job
+         downloads the linux-x64 artifacts before packing. -->
+    <None Include="..\..\artifacts\native\linux-x64\libddsc.so" Pack="true" PackagePath="runtimes/linux-x64/native"
+          Condition="Exists('..\..\artifacts\native\linux-x64\libddsc.so')" />
+    <None Include="..\..\artifacts\native\linux-x64\libddsc.so.0" Pack="true" PackagePath="runtimes/linux-x64/native"
+          Condition="Exists('..\..\artifacts\native\linux-x64\libddsc.so.0')" />
 
     <!-- Build: Targets (buildTransitive → imported by direct AND transitive consumers) -->
     <None Include="..\..\build\targets\CycloneDDS.targets" Pack="true" PackagePath="buildTransitive/CycloneDDS.NET.targets" />
@@ -22,21 +30,20 @@
          Enables the code generator only for projects that directly reference the package. -->
     <None Include="..\..\build\props\CycloneDDS.props" Pack="true" PackagePath="build/CycloneDDS.NET.props" />
 
-    <!-- Tools: Native Assets — Windows -->
-    <None Include="..\..\artifacts\native\win-x64\idlc.exe" Pack="true" PackagePath="tools/" />
-    <None Include="..\..\artifacts\native\win-x64\cycloneddsidl.dll" Pack="true" PackagePath="tools/" />
-    <None Include="..\..\artifacts\native\win-x64\cycloneddsidlc.dll" Pack="true" PackagePath="tools/" />
-    <None Include="..\..\artifacts\native\win-x64\cycloneddsidljson.dll" Pack="true" PackagePath="tools/" />
-    <None Include="..\..\artifacts\native\win-x64\ddsc.dll" Pack="true" PackagePath="tools/" />
+    <!-- Tools: Native Assets (Explicitly selected) -->
+    <None Include="..\..\artifacts\native\win-x64\idlc.exe" Pack="true" PackagePath="tools/" Condition="Exists('..\..\artifacts\native\win-x64\idlc.exe')" />
+    <None Include="..\..\artifacts\native\win-x64\cycloneddsidl.dll" Pack="true" PackagePath="tools/" Condition="Exists('..\..\artifacts\native\win-x64\cycloneddsidl.dll')" />
+    <None Include="..\..\artifacts\native\win-x64\cycloneddsidlc.dll" Pack="true" PackagePath="tools/" Condition="Exists('..\..\artifacts\native\win-x64\cycloneddsidlc.dll')" />
+    <None Include="..\..\artifacts\native\win-x64\cycloneddsidljson.dll" Pack="true" PackagePath="tools/" Condition="Exists('..\..\artifacts\native\win-x64\cycloneddsidljson.dll')" />
+    <None Include="..\..\artifacts\native\win-x64\ddsc.dll" Pack="true" PackagePath="tools/" Condition="Exists('..\..\artifacts\native\win-x64\ddsc.dll')" />
 
-    <!-- Tools: Native Assets — Linux -->
-    <None Include="..\..\artifacts\native\linux-x64\idlc" Pack="true" PackagePath="tools/" />
+    <!-- Tools: Native Assets — Linux (idlc + its .so dependencies, flat in tools/).
+         The .so globs are skipped silently when the linux-x64 artifacts are absent;
+         idlc is Exists-guarded for the same reason. -->
+    <None Include="..\..\artifacts\native\linux-x64\idlc" Pack="true" PackagePath="tools/"
+          Condition="Exists('..\..\artifacts\native\linux-x64\idlc')" />
     <None Include="..\..\artifacts\native\linux-x64\*.so" Pack="true" PackagePath="tools/" />
-    <None Include="..\..\artifacts\native\linux-x64\*.so.11" Pack="true" PackagePath="tools/" />
-
-    <!-- Runtime: Linux Native Assets -->
-    <None Include="..\..\artifacts\native\linux-x64\*.so" Pack="true" PackagePath="runtimes/linux-x64/native" />
-    <None Include="..\..\artifacts\native\linux-x64\*.so.11" Pack="true" PackagePath="runtimes/linux-x64/native" />
+    <None Include="..\..\artifacts\native\linux-x64\*.so.0" Pack="true" PackagePath="tools/" />
 
     <!-- Tools: Shared Managed Libraries -->
     <None Include="..\..\tools\CycloneDDS.CodeGen\bin\$(Configuration)\net10.0\CycloneDDS.Compiler.Common.dll" Pack="true" PackagePath="tools/" />
@@ -47,7 +54,7 @@
     <None Include="..\..\tools\CycloneDDS.CodeGen\bin\$(Configuration)\net10.0\CycloneDDS.Schema.pdb" Pack="true" PackagePath="tools/" />
 
     <!-- Tools: CodeGen -->
-    <None Include="..\..\tools\CycloneDDS.CodeGen\bin\$(Configuration)\net10.0\CycloneDDS.CodeGen.exe" Pack="true" PackagePath="tools/" />
+    <None Include="..\..\tools\CycloneDDS.CodeGen\bin\$(Configuration)\net10.0\CycloneDDS.CodeGen.exe" Pack="true" PackagePath="tools/" Condition="Exists('..\..\tools\CycloneDDS.CodeGen\bin\$(Configuration)\net10.0\CycloneDDS.CodeGen.exe')" />
     <None Include="..\..\tools\CycloneDDS.CodeGen\bin\$(Configuration)\net10.0\CycloneDDS.CodeGen.dll" Pack="true" PackagePath="tools/" />
     <None Include="..\..\tools\CycloneDDS.CodeGen\bin\$(Configuration)\net10.0\CycloneDDS.CodeGen.pdb" Pack="true" PackagePath="tools/" />
     <None Include="..\..\tools\CycloneDDS.CodeGen\bin\$(Configuration)\net10.0\CycloneDDS.CodeGen.deps.json" Pack="true" PackagePath="tools/" />
@@ -56,7 +63,7 @@
     <None Include="..\..\tools\CycloneDDS.CodeGen\bin\$(Configuration)\net10.0\Microsoft.CodeAnalysis.CSharp.dll" Pack="true" PackagePath="tools/" />
 
     <!-- Tools: IdlImporter -->
-    <None Include="..\..\tools\CycloneDDS.IdlImporter\bin\$(Configuration)\net10.0\CycloneDDS.IdlImporter.exe" Pack="true" PackagePath="tools/" />
+    <None Include="..\..\tools\CycloneDDS.IdlImporter\bin\$(Configuration)\net10.0\CycloneDDS.IdlImporter.exe" Pack="true" PackagePath="tools/" Condition="Exists('..\..\tools\CycloneDDS.IdlImporter\bin\$(Configuration)\net10.0\CycloneDDS.IdlImporter.exe')" />
     <None Include="..\..\tools\CycloneDDS.IdlImporter\bin\$(Configuration)\net10.0\CycloneDDS.IdlImporter.dll" Pack="true" PackagePath="tools/" />
     <None Include="..\..\tools\CycloneDDS.IdlImporter\bin\$(Configuration)\net10.0\CycloneDDS.IdlImporter.pdb" Pack="true" PackagePath="tools/" />
     <None Include="..\..\tools\CycloneDDS.IdlImporter\bin\$(Configuration)\net10.0\CycloneDDS.IdlImporter.deps.json" Pack="true" PackagePath="tools/" />
@@ -76,6 +83,14 @@
   <ItemGroup>
     <None Include="$(OutputPath)\CycloneDDS.Core.dll" Pack="true" PackagePath="lib\$(TargetFramework)" Visible="false" />
     <None Include="$(OutputPath)\CycloneDDS.Schema.dll" Pack="true" PackagePath="lib\$(TargetFramework)" Visible="false" />
+    <!-- Ship the SourceLink-enabled PDBs next to their DLLs so consumers can debug
+         into CycloneDDS.Core / CycloneDDS.Schema too (not just CycloneDDS.Runtime).
+         These are manually-packed project-reference outputs, so their symbols are
+         not auto-collected into the symbol package. -->
+    <None Include="$(OutputPath)\CycloneDDS.Core.pdb" Pack="true" PackagePath="lib\$(TargetFramework)" Visible="false"
+          Condition="Exists('$(OutputPath)\CycloneDDS.Core.pdb')" />
+    <None Include="$(OutputPath)\CycloneDDS.Schema.pdb" Pack="true" PackagePath="lib\$(TargetFramework)" Visible="false"
+          Condition="Exists('$(OutputPath)\CycloneDDS.Schema.pdb')" />
   </ItemGroup>
 
   <ItemGroup>
@@ -92,7 +107,18 @@
       <NativeDir>$(MSBuildProjectDirectory)\..\..\cyclonedds</NativeDir>
       <UpstreamRepoUrl>https://github.com/eclipse-cyclonedds/cyclonedds</UpstreamRepoUrl>
     </PropertyGroup>
-    
+
+    <Exec Command="git rev-parse HEAD" ConsoleToMSBuild="true" WorkingDirectory="$(NativeDir)" StandardOutputImportance="Low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="NativeFullCommit" />
+    </Exec>
+
+    <Exec Command="git merge-base origin/master HEAD" ConsoleToMSBuild="true" WorkingDirectory="$(NativeDir)" StandardOutputImportance="Low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="NativeBaseCommit" />
+    </Exec>
+
+    <Exec Command="git config --get remote.origin.url" ConsoleToMSBuild="true" WorkingDirectory="$(NativeDir)" StandardOutputImportance="Low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="NativeRepoUrl" />
+    </Exec>
 
     <PropertyGroup>
       <NativeVersionInfo>

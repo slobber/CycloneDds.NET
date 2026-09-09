@@ -43,9 +43,7 @@ jobs:
 
     - name: Build Native (linux-x64)
       shell: bash
-      run: |
-        chmod +x build/native-linux.sh
-        build/native-linux.sh Release
+      run: build/native-linux.sh Release
 
     - name: Build Managed Code
       run: dotnet build CycloneDDS.NET.Core.slnf -c Release
@@ -54,7 +52,7 @@ jobs:
       run: dotnet test tests/CycloneDDS.Runtime.Tests/CycloneDDS.Runtime.Tests.csproj -c Release --no-build --logger "console;verbosity=normal"
 
     - name: Upload linux-x64 Native Artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: native-linux-x64
         path: artifacts/native/linux-x64/*
@@ -94,7 +92,7 @@ jobs:
         cmake --version
 
     - name: Download linux-x64 Native Artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: native-linux-x64
         path: artifacts/native/linux-x64/
@@ -108,7 +106,7 @@ jobs:
       run: .\build\test-package.ps1
 
     - name: Upload win-x64 Native Artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: native-win-x64
@@ -116,7 +114,7 @@ jobs:
         if-no-files-found: warn
 
     - name: Upload NuGet Packages
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: nuget-packages
@@ -124,7 +122,7 @@ jobs:
         if-no-files-found: warn
 
     - name: Upload Symbol Packages
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: symbol-packages
@@ -154,16 +152,14 @@ jobs:
         dotnet-version: 10.0.x
 
     - name: Download cross-platform packages
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: nuget-packages
         path: artifacts/nuget/
 
     - name: Smoke-test the cross-platform package (Linux)
       shell: bash
-      run: |
-        chmod +x build/test-package.sh
-        build/test-package.sh
+      run: build/test-package.sh
 
   # ---------------------------------------------------------------------------
   # Publish to BaGet — ONLY on a version tag (vX.Y.Z), and ONLY after the
@@ -188,13 +184,13 @@ jobs:
         dotnet-version: 10.0.x
 
     - name: Download packages
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: nuget-packages
         path: artifacts/nuget/
 
     - name: Download symbol packages
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: symbol-packages
         path: artifacts/nuget/

@@ -6,8 +6,9 @@ set -euo pipefail
 #
 # PURPOSE:
 #   Compiles the native (C/C++) Cyclone DDS submodule for Linux and copies the
-#   resulting binaries to the local 'artifacts' directory.
-#   This is a prerequisite for packing the NuGet package with linux-x64 support.
+#   resulting binaries (.so libraries + idlc) to the local 'artifacts' directory.
+#   This is a prerequisite for running managed tests or packing the NuGet package
+#   with linux-x64 support. It is the Linux counterpart of build/native-win.ps1.
 #
 # USAGE:
 #   ./build/native-linux.sh [Release|Debug]
@@ -19,31 +20,32 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 SOURCE_DIR="$REPO_ROOT/cyclonedds"
 BUILD_DIR="$REPO_ROOT/build/native-linux"
-INSTALL_DIR="$REPO_ROOT/artifacts/native-install"
+INSTALL_DIR="$REPO_ROOT/artifacts/native-install-linux"
 ARTIFACTS_DIR="$REPO_ROOT/artifacts/native/linux-x64"
 
 echo "============================================================"
 echo "  Building Native CycloneDDS for Linux ($CONFIG)"
 echo "============================================================"
 
-# Check prerequisites
+# ----------------------------------------------------------------
+# Prerequisites
+# ----------------------------------------------------------------
 if ! command -v cmake &> /dev/null; then
     echo "ERROR: cmake is not installed or not in PATH." >&2
     exit 1
 fi
 
-if ! command -v gcc &> /dev/null; then
-    echo "ERROR: gcc is not installed or not in PATH." >&2
+if ! command -v gcc &> /dev/null && ! command -v cc &> /dev/null; then
+    echo "ERROR: no C compiler (gcc/cc) found in PATH." >&2
     exit 1
 fi
 
-if [ ! -d "$SOURCE_DIR" ]; then
-    echo "ERROR: Native source directory not found: $SOURCE_DIR" >&2
+if [ ! -d "$SOURCE_DIR" ] || [ -z "$(ls -A "$SOURCE_DIR" 2>/dev/null)" ]; then
+    echo "ERROR: Native source directory is missing or empty: $SOURCE_DIR" >&2
     echo "       Run: git submodule update --init --recursive" >&2
     exit 1
 fi
 
-# Ensure output directories exist
 mkdir -p "$BUILD_DIR" "$INSTALL_DIR" "$ARTIFACTS_DIR"
 
 # ----------------------------------------------------------------
@@ -54,14 +56,14 @@ echo "[1/3] Configuring CMake..."
 
 cmake -S "$SOURCE_DIR" -B "$BUILD_DIR" \
     -DCMAKE_INSTALL_PREFIX="$INSTALL_DIR" \
+    -DCMAKE_BUILD_TYPE="$CONFIG" \
     -DBUILD_IDLC=ON \
     -DBUILD_TESTING=OFF \
     -DBUILD_EXAMPLES=OFF \
     -DENABLE_SSL=OFF \
     -DENABLE_ICEORYX=OFF \
     -DENABLE_TCP=OFF \
-    -DENABLE_SECURITY=OFF \
-    -DCMAKE_BUILD_TYPE="$CONFIG"
+    -DENABLE_SECURITY=OFF
 
 # ----------------------------------------------------------------
 # [2/3] Build & Install
@@ -79,36 +81,68 @@ cmake --install "$BUILD_DIR" --config "$CONFIG"
 echo ""
 echo "[3/3] Copying artifacts to $ARTIFACTS_DIR..."
 
-# Runtime library (include both .so.0 for soname and .so for convention)
-cp -f "$INSTALL_DIR/lib/libddsc.so.11.0.1" "$ARTIFACTS_DIR/libddsc.so.11" 2>/dev/null || echo "  [-] Missing libddsc.so.11.0.1"
-cp -f "$INSTALL_DIR/lib/libddsc.so.11.0.1" "$ARTIFACTS_DIR/libddsc.so" 2>/dev/null || true
-echo "  [+] libddsc.so / libddsc.so.11"
+LIB_DIR="$INSTALL_DIR/lib"
+BIN_DIR="$INSTALL_DIR/bin"
+# Some distros install shared libs to lib64.
+[ -d "$LIB_DIR" ] || LIB_DIR="$INSTALL_DIR/lib64"
 
-# IDL compiler executable
-cp -f "$INSTALL_DIR/bin/idlc" "$ARTIFACTS_DIR/" 2>/dev/null || echo "  [-] Missing idlc"
-echo "  [+] idlc"
+# Copy a shared library, resolving the SONAME symlink chain to the real file so
+# we don't have to hard-code the version suffix. The file is staged as both
+# <base>.so (linker/convention name) and <base>.so.0 (the runtime SONAME).
+copy_lib() {
+    local base="$1"
+    local real=""
+    if [ -e "$LIB_DIR/${base}.so" ]; then
+        real="$(readlink -f "$LIB_DIR/${base}.so")"
+    elif [ -e "$LIB_DIR/${base}.so.0" ]; then
+        real="$(readlink -f "$LIB_DIR/${base}.so.0")"
+    else
+        # Last resort: pick the most specific versioned file available.
+        real="$(ls -1 "$LIB_DIR/${base}.so".* 2>/dev/null | sort | tail -n1 || true)"
+    fi
 
-# IDL compiler support libraries
-for lib in libcycloneddsidl libcycloneddsidlc libcycloneddsidljson; do
-    cp -f "$INSTALL_DIR/lib/${lib}.so.11.0.1" "$ARTIFACTS_DIR/${lib}.so.11" 2>/dev/null || echo "  [-] Missing ${lib}.so.11.0.1"
-    cp -f "$INSTALL_DIR/lib/${lib}.so.11.0.1" "$ARTIFACTS_DIR/${lib}.so" 2>/dev/null || true
-    echo "  [+] ${lib}.so / ${lib}.so.11"
-done
+    if [ -z "$real" ] || [ ! -e "$real" ]; then
+        echo "  [-] Missing ${base}.so* in $LIB_DIR" >&2
+        return 1
+    fi
 
-# Fix RPATH: cmake sets RPATH to $ORIGIN/../lib (bin/ -> lib/), but in the
-# NuGet tools/ directory all files are flat. Change RPATH to $ORIGIN/ so the
-# dynamic linker finds .so dependencies alongside the executable.
+    cp -f "$real" "$ARTIFACTS_DIR/${base}.so"
+    cp -f "$real" "$ARTIFACTS_DIR/${base}.so.0"
+    echo "  [+] ${base}.so / ${base}.so.0"
+}
+
+# Runtime library and IDL-compiler support libraries.
+copy_lib libddsc
+copy_lib libcycloneddsidl
+copy_lib libcycloneddsidlc
+copy_lib libcycloneddsidljson
+
+# IDL compiler executable.
+if [ -f "$BIN_DIR/idlc" ]; then
+    cp -f "$BIN_DIR/idlc" "$ARTIFACTS_DIR/"
+    chmod +x "$ARTIFACTS_DIR/idlc"
+    echo "  [+] idlc"
+else
+    echo "  [-] Missing idlc in $BIN_DIR" >&2
+    exit 1
+fi
+
+# Fix RPATH: CMake sets RPATH to $ORIGIN/../lib (bin/ -> lib/), but in the flat
+# NuGet tools/ directory every file sits side by side. Rewrite RPATH to $ORIGIN/
+# so the dynamic linker finds the .so dependencies next to the executable.
 if command -v patchelf &> /dev/null; then
     echo ""
     echo "  [+] Fixing RPATH to \$ORIGIN/..."
     chmod +w "$ARTIFACTS_DIR/"*.so* "$ARTIFACTS_DIR/idlc" 2>/dev/null || true
     for f in "$ARTIFACTS_DIR/"*.so* "$ARTIFACTS_DIR/idlc"; do
+        [ -e "$f" ] || continue
         patchelf --set-rpath '$ORIGIN/' "$f" 2>/dev/null || true
     done
     echo "  [+] RPATH fixed."
 else
     echo "  [!] patchelf not found. Run: sudo apt-get install patchelf"
-    echo "  [!] Without patchelf, LD_LIBRARY_PATH must be set at runtime."
+    echo "  [!] Without patchelf, LD_LIBRARY_PATH must point at the idlc directory at runtime."
+    echo "  [!] (IdlcRunner sets this automatically; DllImport('ddsc') resolves via the co-located .so.)"
 fi
 
 echo ""
