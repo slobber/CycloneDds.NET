@@ -88,12 +88,16 @@ BIN_DIR="$INSTALL_DIR/bin"
 
 # Copy a shared library, resolving the SONAME symlink chain to the real file so
 # we don't have to hard-code the version suffix. The file is staged as both
-# <base>.so (linker/convention name) and <base>.so.0 (the runtime SONAME).
+# <base>.so (linker/convention name) and <base>.so.0 (the upstream runtime
+# SONAME convention). In addition, the actual SONAME used by this CycloneDDS
+# build (e.g. <base>.so.11) is staged too, because idlc records that exact name
+# in its DT_NEEDED entries and the flat tools/ layout must satisfy it.
 copy_lib() {
     local base="$1"
     local real=""
-    if [ -e "$LIB_DIR/${base}.so" ]; then
-        real="$(readlink -f "$LIB_DIR/${base}.so")"
+    local link="$LIB_DIR/${base}.so"
+    if [ -e "$link" ]; then
+        real="$(readlink -f "$link")"
     elif [ -e "$LIB_DIR/${base}.so.0" ]; then
         real="$(readlink -f "$LIB_DIR/${base}.so.0")"
     else
@@ -109,6 +113,18 @@ copy_lib() {
     cp -f "$real" "$ARTIFACTS_DIR/${base}.so"
     cp -f "$real" "$ARTIFACTS_DIR/${base}.so.0"
     echo "  [+] ${base}.so / ${base}.so.0"
+
+    if [ -L "$link" ]; then
+        local soname
+        soname="$(basename "$(readlink "$link")")"
+        case "$soname" in
+            "" | "${base}.so" | "${base}.so.0") ;;
+            *)
+                cp -f "$real" "$ARTIFACTS_DIR/$soname"
+                echo "  [+] $soname"
+                ;;
+        esac
+    fi
 }
 
 # Runtime library and IDL-compiler support libraries.
