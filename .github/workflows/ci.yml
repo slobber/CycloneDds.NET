@@ -26,12 +26,6 @@ jobs:
         submodules: recursive
         token: ${{ secrets.CI_PAT }}
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
-      with:
-        # net10.0 is the target framework; the 10.0 SDK builds and runs everything.
-        dotnet-version: 10.0.x
-
     - name: Install native build prerequisites
       run: sudo apt-get update && sudo apt-get install -y cmake build-essential patchelf
 
@@ -79,12 +73,6 @@ jobs:
         fetch-depth: 0 # Required for Nerdbank.GitVersioning to determine version
         submodules: recursive
         token: ${{ secrets.CI_PAT }}
-
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
-      with:
-        # net10.0 is the target framework; the 10.0 SDK builds and runs everything.
-        dotnet-version: 10.0.x
 
     - name: Display Tools Versions
       run: |
@@ -145,12 +133,6 @@ jobs:
       with:
         fetch-depth: 0 # Required for Nerdbank.GitVersioning (applies to the smoke-test project)
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
-      with:
-        # net10.0 is the target framework; the 10.0 SDK builds and runs everything.
-        dotnet-version: 10.0.x
-
     - name: Download cross-platform packages
       uses: actions/download-artifact@v3
       with:
@@ -178,11 +160,6 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
 
     steps:
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: 10.0.x
-
     - name: Download packages
       uses: actions/download-artifact@v3
       with:
